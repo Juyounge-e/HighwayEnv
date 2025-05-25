@@ -19,7 +19,7 @@ except Exception:  # nosec
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 
 
-def _register_highway_envs():
+def register_highway_envs():
     """Import the envs module so that envs register themselves."""
 
     from highway_env.envs.common.abstract import MultiAgentWrapper
@@ -118,5 +118,10 @@ def _register_highway_envs():
     # u_turn_env.py
     register(id="u-turn-v0", entry_point="highway_env.envs.u_turn_env:UTurnEnv")
 
+    # 종설 custom 환경
+    register(
+    id="custom-mixed-road-v0",
+    entry_point="highway_env.envs:MixedRoadEnv"
+    )
 
-_register_highway_envs()
+register_highway_envs()
