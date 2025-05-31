@@ -9,15 +9,45 @@ from highway_env.vehicle.behavior import IDMVehicle
 from highway_env.vehicle.objects import Obstacle
 
 class MixedRoadEnv(AbstractEnv):
+    @classmethod
     def default_config(self):
         config = super().default_config()
-        config.update({
-            "road_length": 200,
-            "lanes_count": 2,
-            "vehicles_count": 5,
-            "simulation_frequency": 15,
-            "policy_frequency": 5,
-        })
+        config.update(
+            {
+                # 기본 전역 설정(from HighwayEnv)
+                "observation": {"type": "Kinematics"},
+                "action": {"type": "DiscreteMetaAction"},
+                "lanes_count": 4,
+                "vehicles_count": 50,
+                "controlled_vehicles": 1,
+                "initial_lane_id": None,
+                "duration": 40,
+                "ego_spacing": 2,
+                "vehicles_density": 1,
+                "normalize_reward": True,
+                "offroad_terminal": False,
+
+                # segment별 보상 정책
+                "segment_configs": {
+                    "merge": {
+                        "collision_reward": -1,
+                        "right_lane_reward": 0.1,
+                        "high_speed_reward": 0.2,
+                        "reward_speed_range": [20, 30],
+                        "merging_speed_reward": -0.5,
+                        "lane_change_reward": -0.05,
+                    },
+                    "highway": {
+                        "collision_reward": -1,
+                        "right_lane_reward": 0.1,
+                        "high_speed_reward": 0.4,
+                        "lane_change_reward": 0,
+                        "reward_speed_range": [20, 30],
+                        "normalize_reward": True,
+                    },
+                },
+            }
+    )
         return config
 
     def _make_road(self):
