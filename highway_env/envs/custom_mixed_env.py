@@ -34,15 +34,16 @@ class MixedRoadEnv(AbstractEnv):
         y = [0, StraightLane.DEFAULT_WIDTH]
         line_type = [[c, s], [n, c]]
         line_type_merge = [[c, s], [n, s]]
+
         for i in range(2):
             net.add_lane(
-                "a",
-                "b",
+                "hw_a",
+                "hw_b",
                 StraightLane([0, y[i]], [sum(ends[:2]), y[i]], line_types=line_type[i]),
             )
             net.add_lane(
-                "b",
-                "c",
+                "hw_b",
+                "hw_c",
                 StraightLane(
                     [sum(ends[:2]), y[i]],
                     [sum(ends[:3]), y[i]],
@@ -50,14 +51,14 @@ class MixedRoadEnv(AbstractEnv):
                 ),
             )
             net.add_lane(
-                "c",
-                "d",
+                "hw_c",
+                "ex_a",
                 StraightLane(
                     [sum(ends[:3]), y[i]], [sum(ends), y[i]], line_types=line_type[i]
                 ),
             )
 
-        # Merging lane
+        # Merging lanes
         amplitude = 3.25
         ljk = StraightLane(
             [0, 6.5 + 4 + 4], [ends[0], 6.5 + 4 + 4], line_types=[c, c], forbidden=True
@@ -77,11 +78,11 @@ class MixedRoadEnv(AbstractEnv):
         #     line_types=[n, c],
         #     forbidden=True,
         # )
-        net.add_lane("j", "k", ljk)
-        net.add_lane("k", "b", lkb)
+        net.add_lane("mg_j", "mg_k", ljk)
+        net.add_lane("mg_k", "hw_b", lkb)
        # net.add_lane("b", "c", lbc)
       
-        merge_lane = net.get_lane(("b", "c", 0))
+        merge_lane = net.get_lane(("hw_b", "hw_c", 0))
         merge_end = merge_lane.position(merge_lane.length, 0)
 
         # net.add_lane(
@@ -325,6 +326,14 @@ class MixedRoadEnv(AbstractEnv):
         # net.add_lane(
         #     "wxs", "wxr", StraightLane([-dev / 2, -2], [-access, -2], line_types=(n, c))
         # )
+    
+        self.segment_labels = {
+        ("hw_a", "hw_b"): "highway_1",
+        ("hw_b", "hw_c"): "highway_2",
+        ("hw_c", "ex_a"): "highway_exit",
+        ("mg_j", "mg_k"): "merge_straight",
+        ("mg_k", "hw_b"): "merge_entry"
+     }   
 
         road = Road(
             network=net,
@@ -337,7 +346,7 @@ class MixedRoadEnv(AbstractEnv):
     def _make_vehicles(self):
         # 주행 에이전트 
         vehicle = self.action_type.vehicle_class(
-            self.road, self.road.network.get_lane(("a", "b", 0)).position(5, 0)
+            self.road, self.road.network.get_lane(("hw_a", "b", 0)).position(5, 0)
         )
         self.vehicle = vehicle
         self.road.vehicles.append(vehicle)
@@ -355,3 +364,43 @@ class MixedRoadEnv(AbstractEnv):
     # 기본 보상: 전진한 만큼 속도 보상
         reward = self.vehicle.speed / self.vehicle.MAX_SPEED
         return reward
+    
+    def _is_terminated(self) -> bool:
+        return (
+            any(v.crashed for v in self.controlled_vehicles)
+            or all(self.has_arrived(v) for v in self.controlled_vehicles)
+        )
+    
+    def has_arrived(self, vehicle, exit_distance=25) -> bool:
+        if not vehicle.lane_index:
+            return False
+        _from, _to, _ = vehicle.lane_index
+        return (
+            _from == "c" and _to == "d"
+            and vehicle.lane.local_coordinates(vehicle.position)[0] >= vehicle.lane.length - exit_distance
+        )
+    
+    def _is_truncated(self) -> bool:
+        """The episode is truncated if the time limit is reached."""
+        return self.time >= self.config["duration"]
+    
+    @classmethod
+    def default_config(cls) -> dict:
+        cfg = super().default_config()
+        cfg.update(
+            {
+                "simulation_frequency": 5,
+                "lanes_count": 3,
+                "vehicles_count": 20,
+                "duration": 30,  # [s]
+                "ego_spacing": 1.5,
+            }
+        )
+        return cfg
+
+    def _create_vehicles(self) -> None:
+        super()._create_vehicles()
+        # Disable collision check for uncontrolled vehicles
+        for vehicle in self.road.vehicles:
+            if vehicle not in self.controlled_vehicles:
+                vehicle.check_collisions = False
