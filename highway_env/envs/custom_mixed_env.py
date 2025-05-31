@@ -31,7 +31,7 @@ class MixedRoadEnv(AbstractEnv):
         # Highway lanes
         ends = [150, 80, 80, 150]  # Before, converging, merge, after
         c, s, n = LineType.CONTINUOUS_LINE, LineType.STRIPED, LineType.NONE
-        y = [0, StraightLane.DEFAULT_WIDTH]ㄴ
+        y = [0, StraightLane.DEFAULT_WIDTH]
         line_type = [[c, s], [n, c]]
         line_type_merge = [[c, s], [n, s]]
         for i in range(2):
@@ -71,260 +71,260 @@ class MixedRoadEnv(AbstractEnv):
             line_types=[c, c],
             forbidden=True,
         )
-        lbc = StraightLane(
-            lkb.position(ends[1], 0),
-            lkb.position(ends[1], 0) + [ends[2], 0],
-            line_types=[n, c],
-            forbidden=True,
-        )
+        # lbc = StraightLane(
+        #     lkb.position(ends[1], 0),
+        #     lkb.position(ends[1], 0) + [ends[2], 0],
+        #     line_types=[n, c],
+        #     forbidden=True,
+        # )
         net.add_lane("j", "k", ljk)
         net.add_lane("k", "b", lkb)
-        net.add_lane("b", "c", lbc)
+       # net.add_lane("b", "c", lbc)
       
         merge_lane = net.get_lane(("b", "c", 0))
         merge_end = merge_lane.position(merge_lane.length, 0)
 
-        net.add_lane(
-            "c", "ser",
-            StraightLane(merge_end, [2, 170], line_types=[LineType.CONTINUOUS, LineType.CONTINUOUS])
-        )
+        # net.add_lane(
+        #     "c", "ser",
+        #     StraightLane(merge_end, [2, 170], line_types=[LineType.CONTINUOUS, LineType.CONTINUOUS])
+        # )
         
-        # 회전 교차로 시작  
-        center = [merge_end[0] + 40, merge_end[1]] # [m]
-        radius = 20  # [m]
-        alpha = 24  # [deg]
+        # # 회전 교차로 시작  
+        # center = [merge_end[0] + 40, merge_end[1]] # [m]
+        # radius = 20  # [m]
+        # alpha = 24  # [deg]
 
-        radii = [radius, radius + 4]
-        line = [[c, s], [n, c]]
-        for lane in [0, 1]:
-            net.add_lane(
-                "se",
-                "ex",
-                CircularLane(
-                    center,
-                    radii[lane],
-                    np.deg2rad(90 - alpha),
-                    np.deg2rad(alpha),
-                    clockwise=False,
-                    line_types=line[lane],
-                ),
-            )
-            net.add_lane(
-                "ex",
-                "ee",
-                CircularLane(
-                    center,
-                    radii[lane],
-                    np.deg2rad(alpha),
-                    np.deg2rad(-alpha),
-                    clockwise=False,
-                    line_types=line[lane],
-                ),
-            )
-            net.add_lane(
-                "ee",
-                "nx",
-                CircularLane(
-                    center,
-                    radii[lane],
-                    np.deg2rad(-alpha),
-                    np.deg2rad(-90 + alpha),
-                    clockwise=False,
-                    line_types=line[lane],
-                ),
-            )
-            net.add_lane(
-                "nx",
-                "ne",
-                CircularLane(
-                    center,
-                    radii[lane],
-                    np.deg2rad(-90 + alpha),
-                    np.deg2rad(-90 - alpha),
-                    clockwise=False,
-                    line_types=line[lane],
-                ),
-            )
-            net.add_lane(
-                "ne",
-                "wx",
-                CircularLane(
-                    center,
-                    radii[lane],
-                    np.deg2rad(-90 - alpha),
-                    np.deg2rad(-180 + alpha),
-                    clockwise=False,
-                    line_types=line[lane],
-                ),
-            )
-            net.add_lane(
-                "wx",
-                "we",
-                CircularLane(
-                    center,
-                    radii[lane],
-                    np.deg2rad(-180 + alpha),
-                    np.deg2rad(-180 - alpha),
-                    clockwise=False,
-                    line_types=line[lane],
-                ),
-            )
-            net.add_lane(
-                "we",
-                "sx",
-                CircularLane(
-                    center,
-                    radii[lane],
-                    np.deg2rad(180 - alpha),
-                    np.deg2rad(90 + alpha),
-                    clockwise=False,
-                    line_types=line[lane],
-                ),
-            )
-            net.add_lane(
-                "sx",
-                "se",
-                CircularLane(
-                    center,
-                    radii[lane],
-                    np.deg2rad(90 + alpha),
-                    np.deg2rad(90 - alpha),
-                    clockwise=False,
-                    line_types=line[lane],
-                ),
-            )
+        # radii = [radius, radius + 4]
+        # line = [[c, s], [n, c]]
+        # for lane in [0, 1]:
+        #     net.add_lane(
+        #         "se",
+        #         "ex",
+        #         CircularLane(
+        #             center,
+        #             radii[lane],
+        #             np.deg2rad(90 - alpha),
+        #             np.deg2rad(alpha),
+        #             clockwise=False,
+        #             line_types=line[lane],
+        #         ),
+        #     )
+        #     net.add_lane(
+        #         "ex",
+        #         "ee",
+        #         CircularLane(
+        #             center,
+        #             radii[lane],
+        #             np.deg2rad(alpha),
+        #             np.deg2rad(-alpha),
+        #             clockwise=False,
+        #             line_types=line[lane],
+        #         ),
+        #     )
+        #     net.add_lane(
+        #         "ee",
+        #         "nx",
+        #         CircularLane(
+        #             center,
+        #             radii[lane],
+        #             np.deg2rad(-alpha),
+        #             np.deg2rad(-90 + alpha),
+        #             clockwise=False,
+        #             line_types=line[lane],
+        #         ),
+        #     )
+        #     net.add_lane(
+        #         "nx",
+        #         "ne",
+        #         CircularLane(
+        #             center,
+        #             radii[lane],
+        #             np.deg2rad(-90 + alpha),
+        #             np.deg2rad(-90 - alpha),
+        #             clockwise=False,
+        #             line_types=line[lane],
+        #         ),
+        #     )
+        #     net.add_lane(
+        #         "ne",
+        #         "wx",
+        #         CircularLane(
+        #             center,
+        #             radii[lane],
+        #             np.deg2rad(-90 - alpha),
+        #             np.deg2rad(-180 + alpha),
+        #             clockwise=False,
+        #             line_types=line[lane],
+        #         ),
+        #     )
+        #     net.add_lane(
+        #         "wx",
+        #         "we",
+        #         CircularLane(
+        #             center,
+        #             radii[lane],
+        #             np.deg2rad(-180 + alpha),
+        #             np.deg2rad(-180 - alpha),
+        #             clockwise=False,
+        #             line_types=line[lane],
+        #         ),
+        #     )
+        #     net.add_lane(
+        #         "we",
+        #         "sx",
+        #         CircularLane(
+        #             center,
+        #             radii[lane],
+        #             np.deg2rad(180 - alpha),
+        #             np.deg2rad(90 + alpha),
+        #             clockwise=False,
+        #             line_types=line[lane],
+        #         ),
+        #     )
+        #     net.add_lane(
+        #         "sx",
+        #         "se",
+        #         CircularLane(
+        #             center,
+        #             radii[lane],
+        #             np.deg2rad(90 + alpha),
+        #             np.deg2rad(90 - alpha),
+        #             clockwise=False,
+        #             line_types=line[lane],
+        #         ),
+        #     )
 
-        # Access lanes: (r)oad/(s)ine
-        access = 170  # [m]
-        dev = 85  # [m]
-        a = 5  # [m]
-        delta_st = 0.2 * dev  # [m]
+        # # Access lanes: (r)oad/(s)ine
+        # access = 170  # [m]
+        # dev = 85  # [m]
+        # a = 5  # [m]
+        # delta_st = 0.2 * dev  # [m]
 
-        delta_en = dev - delta_st
-        w = 2 * np.pi / dev
-        net.add_lane(
-            "ser", "ses", StraightLane([2, access], [2, dev / 2], line_types=(s, c))
-        )
-        net.add_lane(
-            "ses",
-            "se",
-            SineLane(
-                [2 + a, dev / 2],
-                [2 + a, dev / 2 - delta_st],
-                a,
-                w,
-                -np.pi / 2,
-                line_types=(c, c),
-            ),
-        )
-        net.add_lane(
-            "sx",
-            "sxs",
-            SineLane(
-                [-2 - a, -dev / 2 + delta_en],
-                [-2 - a, dev / 2],
-                a,
-                w,
-                -np.pi / 2 + w * delta_en,
-                line_types=(c, c),
-            ),
-        )
-        net.add_lane(
-            "sxs", "sxr", StraightLane([-2, dev / 2], [-2, access], line_types=(n, c))
-        )
+        # delta_en = dev - delta_st
+        # w = 2 * np.pi / dev
+        # net.add_lane(
+        #     "ser", "ses", StraightLane([2, access], [2, dev / 2], line_types=(s, c))
+        # )
+        # net.add_lane(
+        #     "ses",
+        #     "se",
+        #     SineLane(
+        #         [2 + a, dev / 2],
+        #         [2 + a, dev / 2 - delta_st],
+        #         a,
+        #         w,
+        #         -np.pi / 2,
+        #         line_types=(c, c),
+        #     ),
+        # )
+        # net.add_lane(
+        #     "sx",
+        #     "sxs",
+        #     SineLane(
+        #         [-2 - a, -dev / 2 + delta_en],
+        #         [-2 - a, dev / 2],
+        #         a,
+        #         w,
+        #         -np.pi / 2 + w * delta_en,
+        #         line_types=(c, c),
+        #     ),
+        # )
+        # net.add_lane(
+        #     "sxs", "sxr", StraightLane([-2, dev / 2], [-2, access], line_types=(n, c))
+        # )
 
-        net.add_lane(
-            "eer", "ees", StraightLane([access, -2], [dev / 2, -2], line_types=(s, c))
-        )
-        net.add_lane(
-            "ees",
-            "ee",
-            SineLane(
-                [dev / 2, -2 - a],
-                [dev / 2 - delta_st, -2 - a],
-                a,
-                w,
-                -np.pi / 2,
-                line_types=(c, c),
-            ),
-        )
-        net.add_lane(
-            "ex",
-            "exs",
-            SineLane(
-                [-dev / 2 + delta_en, 2 + a],
-                [dev / 2, 2 + a],
-                a,
-                w,
-                -np.pi / 2 + w * delta_en,
-                line_types=(c, c),
-            ),
-        )
-        net.add_lane(
-            "exs", "exr", StraightLane([dev / 2, 2], [access, 2], line_types=(n, c))
-        )
+        # net.add_lane(
+        #     "eer", "ees", StraightLane([access, -2], [dev / 2, -2], line_types=(s, c))
+        # )
+        # net.add_lane(
+        #     "ees",
+        #     "ee",
+        #     SineLane(
+        #         [dev / 2, -2 - a],
+        #         [dev / 2 - delta_st, -2 - a],
+        #         a,
+        #         w,
+        #         -np.pi / 2,
+        #         line_types=(c, c),
+        #     ),
+        # )
+        # net.add_lane(
+        #     "ex",
+        #     "exs",
+        #     SineLane(
+        #         [-dev / 2 + delta_en, 2 + a],
+        #         [dev / 2, 2 + a],
+        #         a,
+        #         w,
+        #         -np.pi / 2 + w * delta_en,
+        #         line_types=(c, c),
+        #     ),
+        # )
+        # net.add_lane(
+        #     "exs", "exr", StraightLane([dev / 2, 2], [access, 2], line_types=(n, c))
+        # )
 
-        net.add_lane(
-            "ner", "nes", StraightLane([-2, -access], [-2, -dev / 2], line_types=(s, c))
-        )
-        net.add_lane(
-            "nes",
-            "ne",
-            SineLane(
-                [-2 - a, -dev / 2],
-                [-2 - a, -dev / 2 + delta_st],
-                a,
-                w,
-                -np.pi / 2,
-                line_types=(c, c),
-            ),
-        )
-        net.add_lane(
-            "nx",
-            "nxs",
-            SineLane(
-                [2 + a, dev / 2 - delta_en],
-                [2 + a, -dev / 2],
-                a,
-                w,
-                -np.pi / 2 + w * delta_en,
-                line_types=(c, c),
-            ),
-        )
-        net.add_lane(
-            "nxs", "nxr", StraightLane([2, -dev / 2], [2, -access], line_types=(n, c))
-        )
+        # net.add_lane(
+        #     "ner", "nes", StraightLane([-2, -access], [-2, -dev / 2], line_types=(s, c))
+        # )
+        # net.add_lane(
+        #     "nes",
+        #     "ne",
+        #     SineLane(
+        #         [-2 - a, -dev / 2],
+        #         [-2 - a, -dev / 2 + delta_st],
+        #         a,
+        #         w,
+        #         -np.pi / 2,
+        #         line_types=(c, c),
+        #     ),
+        # )
+        # net.add_lane(
+        #     "nx",
+        #     "nxs",
+        #     SineLane(
+        #         [2 + a, dev / 2 - delta_en],
+        #         [2 + a, -dev / 2],
+        #         a,
+        #         w,
+        #         -np.pi / 2 + w * delta_en,
+        #         line_types=(c, c),
+        #     ),
+        # )
+        # net.add_lane(
+        #     "nxs", "nxr", StraightLane([2, -dev / 2], [2, -access], line_types=(n, c))
+        # )
 
-        net.add_lane(
-            "wer", "wes", StraightLane([-access, 2], [-dev / 2, 2], line_types=(s, c))
-        )
-        net.add_lane(
-            "wes",
-            "we",
-            SineLane(
-                [-dev / 2, 2 + a],
-                [-dev / 2 + delta_st, 2 + a],
-                a,
-                w,
-                -np.pi / 2,
-                line_types=(c, c),
-            ),
-        )
-        net.add_lane(
-            "wx",
-            "wxs",
-            SineLane(
-                [dev / 2 - delta_en, -2 - a],
-                [-dev / 2, -2 - a],
-                a,
-                w,
-                -np.pi / 2 + w * delta_en,
-                line_types=(c, c),
-            ),
-        )
-        net.add_lane(
-            "wxs", "wxr", StraightLane([-dev / 2, -2], [-access, -2], line_types=(n, c))
-        )
+        # net.add_lane(
+        #     "wer", "wes", StraightLane([-access, 2], [-dev / 2, 2], line_types=(s, c))
+        # )
+        # net.add_lane(
+        #     "wes",
+        #     "we",
+        #     SineLane(
+        #         [-dev / 2, 2 + a],
+        #         [-dev / 2 + delta_st, 2 + a],
+        #         a,
+        #         w,
+        #         -np.pi / 2,
+        #         line_types=(c, c),
+        #     ),
+        # )
+        # net.add_lane(
+        #     "wx",
+        #     "wxs",
+        #     SineLane(
+        #         [dev / 2 - delta_en, -2 - a],
+        #         [-dev / 2, -2 - a],
+        #         a,
+        #         w,
+        #         -np.pi / 2 + w * delta_en,
+        #         line_types=(c, c),
+        #     ),
+        # )
+        # net.add_lane(
+        #     "wxs", "wxr", StraightLane([-dev / 2, -2], [-access, -2], line_types=(n, c))
+        # )
 
         road = Road(
             network=net,
