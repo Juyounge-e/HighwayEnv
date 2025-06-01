@@ -8,6 +8,7 @@ from highway_env.road.lane import CircularLane, LineType, SineLane, StraightLane
 from highway_env.vehicle.behavior import IDMVehicle
 from highway_env.vehicle.objects import Obstacle
 from highway_env import utils
+
 from highway_env.vehicle.controller import ControlledVehicle
 
 class MixedRoadEnv(AbstractEnv):
@@ -24,13 +25,17 @@ class MixedRoadEnv(AbstractEnv):
                 "controlled_vehicles": 1,
                 "initial_lane_id": None,
                 "duration": 40,
-                "ego_spacing": 2,
-                "vehicles_density": 1,
+                "ego_spacing": 2.5,
+                "vehicles_density": 0.7,
                 "normalize_reward": True,
                 "offroad_terminal": False,
 
                 # segment별 보상 정책
                 "segment_configs": {
+                    "default": {
+                        "collision_reward": -1,
+                        "high_speed_reward": 0.3
+                    },  
                     "merge": {
                         "collision_reward": -1,
                         "right_lane_reward": 0.1,
@@ -376,22 +381,53 @@ class MixedRoadEnv(AbstractEnv):
         self.road = road
 
 
-    def _make_vehicles(self):
-        # 주행 에이전트 
-        vehicle = self.action_type.vehicle_class(
-            self.road, self.road.network.get_lane(("hw_a", "b", 0)).position(5, 0)
-        )
-        self.vehicle = vehicle
-        self.road.vehicles.append(vehicle)
-
-        # 다른 차량들 생성
-        for _ in range(self.config["vehicles_count"]):
-            v = IDMVehicle.create_random(self.road)
-            self.road.vehicles.append(v)
-
     def _reset(self):
         self._make_road()
         self._make_vehicles()
+    
+    def _make_vehicles(self) -> None:
+        road = self.road
+        other_vehicles_type = utils.class_from_path(self.config["other_vehicles_type"])
+
+        # 1. Merge 구간 차량 수동 배치
+        ego_vehicle = self.action_type.vehicle_class(
+            road, road.network.get_lane(("hw_a", "hw_b", 1)).position(30, 0), speed=30
+        )
+        road.vehicles.append(ego_vehicle)
+
+        # Merge 측에서 들어오는 차량 (명시적 위치)
+        merging_vehicle = other_vehicles_type(
+            road, road.network.get_lane(("mg_j", "mg_k", 0)).position(110, 0), speed=20
+        )
+        merging_vehicle.target_speed = 30
+        merging_vehicle.randomize_behavior()
+        road.vehicles.append(merging_vehicle)
+
+        # Merge 상단 차량 (고정 위치, 랜덤 lane 선택)
+        for position, speed in [(90, 29), (70, 31), (5, 31.5)]:
+            lane = road.network.get_lane(("hw_a", "hw_b", self.np_random.integers(2)))
+            pos = lane.position(position + self.np_random.uniform(-5, 5), 0)
+            spd = speed + self.np_random.uniform(-1, 1)
+            v = other_vehicles_type(road, pos, speed=spd)
+            v.randomize_behavior()
+            road.vehicles.append(v)
+
+        self.vehicle = ego_vehicle
+        self.controlled_vehicles = [ego_vehicle]
+
+        # 2. Highway 구간 차량 무작위 생성
+        other_per_controlled = utils.near_split(
+            self.config["vehicles_count"], num_bins=self.config["controlled_vehicles"]
+        )
+
+        for others in other_per_controlled:
+            for _ in range(others):
+                vehicle = other_vehicles_type.create_random(
+                    self.road, spacing=1 / self.config["vehicles_density"]
+                )
+                vehicle.randomize_behavior()
+                road.vehicles.append(vehicle)
+
 
     def _reward(self, action) -> float:
         rewards = self._rewards(action)
@@ -522,34 +558,3 @@ class MixedRoadEnv(AbstractEnv):
     def _is_truncated(self) -> bool:
         return self.time >= self.config["duration"]
     
-    def has_arrived(self, vehicle, exit_distance=25) -> bool:
-        if not vehicle.lane_index:
-            return False
-        _from, _to, _ = vehicle.lane_index
-        return (
-            _from == "c" and _to == "d"
-            and vehicle.lane.local_coordinates(vehicle.position)[0] >= vehicle.lane.length - exit_distance
-        )
-    
-
-    
-    @classmethod
-    def default_config(cls) -> dict:
-        cfg = super().default_config()
-        cfg.update(
-            {
-                "simulation_frequency": 5,
-                "lanes_count": 3,
-                "vehicles_count": 20,
-                "duration": 30,  # [s]
-                "ego_spacing": 1.5,
-            }
-        )
-        return cfg
-
-    def _create_vehicles(self) -> None:
-        super()._create_vehicles()
-        # Disable collision check for uncontrolled vehicles
-        for vehicle in self.road.vehicles:
-            if vehicle not in self.controlled_vehicles:
-                vehicle.check_collisions = False
