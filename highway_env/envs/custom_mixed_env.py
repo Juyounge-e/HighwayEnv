@@ -393,10 +393,53 @@ class MixedRoadEnv(AbstractEnv):
         self._make_road()
         self._make_vehicles()
 
-    def _reward(self, action):
-    # 기본 보상: 전진한 만큼 속도 보상
-        reward = self.vehicle.speed / self.vehicle.MAX_SPEED
+    def _reward(self, action) -> float:
+        rewards = self._rewards(action)
+
+        lane_index = self.vehicle.lane_index
+        if not lane_index:
+            return 0.0
+
+        _from, _to, _ = lane_index
+        segment_key = (_from, _to)
+        segment_type = self.segment_labels.get(segment_key, "default")
+        segment_config = self.config["segment_configs"].get(segment_type, {})
+
+        # 보상 가중합 계산
+        reward = sum(
+            segment_config.get(name, 0) * value
+            for name, value in rewards.items()
+        )
+
+        # normalize
+        if self.config.get("normalize_reward", False):
+            min_reward = 0
+            max_reward = 0
+
+            if segment_type.startswith("merge"):
+                min_reward = (
+                    segment_config.get("collision_reward", 0)
+                    + segment_config.get("merging_speed_reward", 0)
+                )
+                max_reward = (
+                    segment_config.get("high_speed_reward", 0)
+                    + segment_config.get("right_lane_reward", 0)
+                )
+            elif segment_type.startswith("highway"):
+                min_reward = segment_config.get("collision_reward", 0)
+                max_reward = (
+                    segment_config.get("high_speed_reward", 0)
+                    + segment_config.get("right_lane_reward", 0)
+                )
+
+            reward = utils.lmap(reward, [min_reward, max_reward], [0, 1])
+
+        # highway에서만 on_road_reward 곱하기
+        if segment_type.startswith("highway") and "on_road_reward" in rewards:
+            reward *= rewards["on_road_reward"]
+
         return reward
+   
     
     def _rewards(self, action) -> dict[str, float]:
     # 현재 차량 위치 기반 세그먼트 타입 가져오기
@@ -452,7 +495,7 @@ class MixedRoadEnv(AbstractEnv):
         # 고속 보상
         if segment_type.startswith("merge") and "lane_change_reward" in segment_config:
             rewards["lane_change_reward"] = float(action in [0, 2])
-            
+
         # 차선 변경 보
         if segment_type.startswith("merge") and "merging_speed_reward" in segment_config:
             rewards["merging_speed_reward"] = sum(  # Altruistic penalty
