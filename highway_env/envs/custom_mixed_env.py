@@ -7,6 +7,8 @@ from highway_env.road.road import Road, RoadNetwork
 from highway_env.road.lane import CircularLane, LineType, SineLane, StraightLane
 from highway_env.vehicle.behavior import IDMVehicle
 from highway_env.vehicle.objects import Obstacle
+from highway_env import utils
+from highway_env.vehicle.controller import ControlledVehicle
 
 class MixedRoadEnv(AbstractEnv):
     @classmethod
@@ -42,6 +44,7 @@ class MixedRoadEnv(AbstractEnv):
                         "right_lane_reward": 0.1,
                         "high_speed_reward": 0.4,
                         "lane_change_reward": 0,
+                        "on_road_reward": 0.1,
                         "reward_speed_range": [20, 30],
                         "normalize_reward": True,
                     },
@@ -394,6 +397,72 @@ class MixedRoadEnv(AbstractEnv):
     # 기본 보상: 전진한 만큼 속도 보상
         reward = self.vehicle.speed / self.vehicle.MAX_SPEED
         return reward
+    
+    def _rewards(self, action) -> dict[str, float]:
+    # 현재 차량 위치 기반 세그먼트 타입 가져오기
+        lane_index = self.vehicle.lane_index
+        if not lane_index:
+            return {}
+
+        _from, _to, _ = lane_index
+        segment_key = (_from, _to)
+        segment_type = self.segment_labels.get(segment_key, "default")
+
+        # 해당 세그먼트의 보상 설정 가져오기
+        segment_config = self.config["segment_configs"].get(segment_type, {})
+
+        # 보상 요소 계산
+        rewards = {}
+
+        # 공통 충돌 보상 
+        if "collision_reward" in segment_config:
+            rewards["collision_reward"] = float(self.vehicle.crashed)
+        
+        ## highway 구간
+        # 고속 보상 (forward_speed 기준)
+        if segment_type.startswith("highway") and  "high_speed_reward" in segment_config:
+            forward_speed = self.vehicle.speed * np.cos(self.vehicle.heading)
+            scaled_speed = utils.lmap(
+                forward_speed, self.config["reward_speed_range"], [0, 1])
+            
+            rewards["high_speed_reward"] = np.clip(scaled_speed, 0, 1)
+
+        if segment_type.startswith("highway") and "right_lane_reward" in segment_config:
+            neighbours = self.road.network.all_side_lanes(self.vehicle.lane_index)
+            lane = (
+                self.vehicle.target_lane_index[2]
+                if isinstance(self.vehicle, ControlledVehicle)
+                else self.vehicle.lane_index[2])
+            rewards["right_lane_reward"] = lane / max(len(neighbours) - 1, 1)
+
+        # one road 보상
+        if segment_type.startswith("highway") and "on_road_reward" in segment_config:
+            rewards["on_road_reward"] = float(self.vehicle.on_road)
+
+
+        ## merge 구간         
+        if segment_type.startswith("merge") and "right_lane_reward" in segment_config:
+            rewards["right_lane_reward"] = self.vehicle.lane_index[2] / 1
+        
+        if segment_type.startswith("merge") and "high_speed_reward" in segment_config:
+            scaled_speed = utils.lmap(
+            self.vehicle.speed, self.config["reward_speed_range"], [0, 1])
+            rewards["high_speed_reward"] = scaled_speed
+
+        # 고속 보상
+        if segment_type.startswith("merge") and "lane_change_reward" in segment_config:
+            rewards["lane_change_reward"] = float(action in [0, 2])
+            
+        # 차선 변경 보
+        if segment_type.startswith("merge") and "merging_speed_reward" in segment_config:
+            rewards["merging_speed_reward"] = sum(  # Altruistic penalty
+                (vehicle.target_speed - vehicle.speed) / vehicle.target_speed
+                for vehicle in self.road.vehicles
+                if self.segment_labels.get(vehicle.lane_index[:2], "").startswith("merge")
+                and isinstance(vehicle, ControlledVehicle)
+            )
+    
+        return rewards
     
     def _is_terminated(self) -> bool:
         return (
