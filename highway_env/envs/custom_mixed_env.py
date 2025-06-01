@@ -507,11 +507,20 @@ class MixedRoadEnv(AbstractEnv):
     
         return rewards
     
+    # 레이블을 반영하여 환경마다 종료 조건 반영
     def _is_terminated(self) -> bool:
-        return (
-            any(v.crashed for v in self.controlled_vehicles)
-            or all(self.has_arrived(v) for v in self.controlled_vehicles)
-        )
+        lane_index = self.vehicle.lane_index
+        _from, _to, _ = lane_index
+        segment_type = self.segment_labels.get((_from, _to), "default")
+
+        if segment_type.startswith("merge"):
+            return self.vehicle.crashed or self.vehicle.position[0] > 370
+        elif segment_type.startswith("highway"):
+            return self.vehicle.crashed or (self.config["offroad_terminal"] and not self.vehicle.on_road)
+        return False
+    
+    def _is_truncated(self) -> bool:
+        return self.time >= self.config["duration"]
     
     def has_arrived(self, vehicle, exit_distance=25) -> bool:
         if not vehicle.lane_index:
@@ -522,9 +531,7 @@ class MixedRoadEnv(AbstractEnv):
             and vehicle.lane.local_coordinates(vehicle.position)[0] >= vehicle.lane.length - exit_distance
         )
     
-    def _is_truncated(self) -> bool:
-        """The episode is truncated if the time limit is reached."""
-        return self.time >= self.config["duration"]
+
     
     @classmethod
     def default_config(cls) -> dict:
