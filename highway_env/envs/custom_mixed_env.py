@@ -26,7 +26,7 @@ class MixedRoadEnv(AbstractEnv):
                 "initial_lane_id": None,
                 "duration": 40,
                 "ego_spacing": 2.5,
-                "vehicles_density": 0.7,
+                "vehicles_density": 0.3,
                 "normalize_reward": True,
                 "offroad_terminal": False,
 
@@ -381,6 +381,16 @@ class MixedRoadEnv(AbstractEnv):
         self.road = road
 
 
+    def _get_segment_config(self, segment_type: str) -> dict:
+        if segment_type in self.config["segment_configs"]:
+            return self.config["segment_configs"][segment_type]
+        
+        for key in self.config["segment_configs"]:
+            if segment_type.startswith(key):
+                return self.config["segment_configs"][key]
+
+        return self.config["segment_configs"].get("default", {})
+
     def _reset(self):
         self._make_road()
         self._make_vehicles()
@@ -439,7 +449,7 @@ class MixedRoadEnv(AbstractEnv):
         _from, _to, _ = lane_index
         segment_key = (_from, _to)
         segment_type = self.segment_labels.get(segment_key, "default")
-        segment_config = self.config["segment_configs"].get(segment_type, {})
+        segment_config = self._get_segment_config(segment_type)
 
         # 보상 가중합 계산
         reward = sum(
@@ -467,12 +477,16 @@ class MixedRoadEnv(AbstractEnv):
                     segment_config.get("high_speed_reward", 0)
                     + segment_config.get("right_lane_reward", 0)
                 )
-
-            reward = utils.lmap(reward, [min_reward, max_reward], [0, 1])
+            if abs(max_reward - min_reward) > 1e-8:
+                reward = utils.lmap(reward, [min_reward, max_reward], [0, 1])
 
         # highway에서만 on_road_reward 곱하기
         if segment_type.startswith("highway") and "on_road_reward" in rewards:
             reward *= rewards["on_road_reward"]
+
+        print(f"▶▶ Step {self.time} ◀◀")
+        print(f"Segment: {segment_type}")
+        print(f"Segment Config: {segment_config}")
 
         return reward
    
@@ -488,7 +502,7 @@ class MixedRoadEnv(AbstractEnv):
         segment_type = self.segment_labels.get(segment_key, "default")
 
         # 해당 세그먼트의 보상 설정 가져오기
-        segment_config = self.config["segment_configs"].get(segment_type, {})
+        segment_config = self._get_segment_config(segment_type)
 
         # 보상 요소 계산
         rewards = {}
@@ -501,8 +515,8 @@ class MixedRoadEnv(AbstractEnv):
         # 고속 보상 (forward_speed 기준)
         if segment_type.startswith("highway") and  "high_speed_reward" in segment_config:
             forward_speed = self.vehicle.speed * np.cos(self.vehicle.heading)
-            scaled_speed = utils.lmap(
-                forward_speed, self.config["reward_speed_range"], [0, 1])
+            speed_range = segment_config.get("reward_speed_range", [20, 30])
+            scaled_speed = utils.lmap(forward_speed, speed_range, [0, 1])
             
             rewards["high_speed_reward"] = np.clip(scaled_speed, 0, 1)
 
@@ -524,8 +538,8 @@ class MixedRoadEnv(AbstractEnv):
             rewards["right_lane_reward"] = self.vehicle.lane_index[2] / 1
         
         if segment_type.startswith("merge") and "high_speed_reward" in segment_config:
-            scaled_speed = utils.lmap(
-            self.vehicle.speed, self.config["reward_speed_range"], [0, 1])
+            speed_range = segment_config.get("reward_speed_range", [20, 30])
+            scaled_speed = utils.lmap(forward_speed, speed_range, [0, 1])
             rewards["high_speed_reward"] = scaled_speed
 
         # 고속 보상
