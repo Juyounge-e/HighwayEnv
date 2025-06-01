@@ -5,6 +5,8 @@ from highway_env.envs.intersection_env import (
     IntersectionEnv,
     MultiAgentIntersectionEnv,
 )
+from highway_env.envs.custom_mixed_env import MixedRoadEnv
+
 from highway_env.envs.lane_keeping_env import LaneKeepingEnv
 from highway_env.envs.merge_env import MergeEnv
 from highway_env.envs.parking_env import (
@@ -34,4 +36,5 @@ __all__ = [
     "RoundaboutEnv",
     "TwoWayEnv",
     "UTurnEnv",
+    "MixedRoadEnv", # 종설 커스텀 환경 
 ]
