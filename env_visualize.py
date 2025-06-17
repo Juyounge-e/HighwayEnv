@@ -3,6 +3,7 @@ import highway_env
 import matplotlib.pyplot as plt
 
 env = gym.make("custom-mixed-road-v0")
+#env = gym.make("roundabout-v0")
 env.reset()
 
 road = env.unwrapped.road
@@ -23,8 +24,11 @@ for lane_id, lane in road.network.lanes_dict().items():
         print(f"❌ {lane_id} 시각화 오류: {e}")
 
 # 전체 범위 계산
-x_min, x_max = min(xs_all), max(xs_all)
-y_min, y_max = min(ys_all), max(ys_all)
+if xs_all and ys_all:
+    x_min, x_max = min(xs_all), max(xs_all)
+    y_min, y_max = min(ys_all), max(ys_all)
+else:
+    x_min, x_max, y_min, y_max = -100, 100, -100, 100
 
 # 시각화 설정
 ax.set_aspect("equal")
