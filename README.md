@@ -71,5 +71,5 @@ python env_visualize.py
 ⸻
 
 ✍️ 작성자
-**유주영**
+유주영
 산업경영공학전공 
