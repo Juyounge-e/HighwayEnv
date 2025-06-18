@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-훈련된 PPO 모델 테스트 및 시각화
-"""
-
 import gymnasium as gym
 import highway_env
 import numpy as np
@@ -11,9 +6,8 @@ import matplotlib.font_manager as fm
 from matplotlib.patches import Circle
 from matplotlib.animation import FuncAnimation, PillowWriter
 
-# 한글 폰트 설정
+
 def setup_korean_font():
-    """macOS에서 한글 폰트 설정"""
     try:
         # macOS에서 사용 가능한 한글 폰트 목록
         korean_fonts = [
@@ -36,12 +30,12 @@ def setup_korean_font():
                 return True
         
         # 한글 폰트를 찾지 못한 경우 기본 설정
-        print("⚠️ 한글 폰트를 찾을 수 없어 기본 설정을 사용합니다.")
+        print(" 한글 폰트를 찾을 수 없어 기본 설정을 사용합니다.")
         plt.rcParams['axes.unicode_minus'] = False
         return False
         
     except Exception as e:
-        print(f"⚠️ 폰트 설정 중 오류 발생: {e}")
+        print(f" 폰트 설정 중 오류 발생: {e}")
         plt.rcParams['axes.unicode_minus'] = False
         return False
 
@@ -55,8 +49,6 @@ import json
 from typing import Dict, List, Optional
 
 class ModelTester:
-    """훈련된 모델 테스트 클래스"""
-    
     def __init__(self, model_path: str):
         self.model_path = model_path
         self.model = None
@@ -64,18 +56,16 @@ class ModelTester:
         self.test_results = []
         
     def load_model(self):
-        """모델 로드"""
-        print(f"🧠 모델 로드 중: {self.model_path}")
+        print(f" 모델 로드 중: {self.model_path}")
         
         if not os.path.exists(self.model_path):
             raise FileNotFoundError(f"모델 파일을 찾을 수 없습니다: {self.model_path}")
         
         self.model = PPO.load(self.model_path)
-        print("✅ 모델 로드 완료")
+        print(" 모델 로드 완료")
         
     def setup_environment(self):
-        """테스트 환경 설정"""
-        print("🔧 테스트 환경 설정 중...")
+        print(" 테스트 환경 설정 중...")
         
         self.env = gym.make("custom-mixed-road-v0", render_mode="rgb_array")
         
@@ -96,12 +86,12 @@ class ModelTester:
             "completion_distance": 30,
         })
         
-        print("✅ 테스트 환경 설정 완료")
+        print(" 테스트 환경 설정 완료")
     
     def run_single_episode(self, episode_num: int = 1, render: bool = True, 
                           save_video: bool = False, auto_save_success: bool = True) -> Dict:
         """단일 에피소드 실행"""
-        print(f"\n🎮 에피소드 {episode_num} 실행 중...")
+        print(f"\n 에피소드 {episode_num} 실행 중...")
         
         obs, info = self.env.reset()
         
@@ -126,7 +116,7 @@ class ModelTester:
         done = False
         step = 0
         
-        while not done and step < 1000:  # 최대 1000 스텝
+        while not done and step < 1000: 
             # 모델 예측
             action, _states = self.model.predict(obs, deterministic=True)
             
@@ -134,7 +124,6 @@ class ModelTester:
             obs, reward, terminated, truncated, info = self.env.step(action)
             done = terminated or truncated
             
-            # 프레임 캡처 (성공 가능성을 위해 항상 저장)
             if save_video or auto_save_success or render:
                 frame = self.env.render()
                 if frame is not None:
@@ -205,7 +194,7 @@ class ModelTester:
                 # 상태 체크
                 if crashed:
                     episode_data['crash'] = True
-                    print(f"   ❌ Step {step}에서 충돌 발생!")
+                    print(f"    Step {step}에서 충돌 발생!")
                     break
             
             step += 1
@@ -222,7 +211,6 @@ class ModelTester:
             plt.ioff()
             plt.close(fig)
         
-        # 비디오 저장 로직 개선
         video_saved = False
         if episode_data['frames']:
             # 강제 저장 모드이거나 성공한 에피소드인 경우
@@ -235,17 +223,17 @@ class ModelTester:
                 video_saved = True
                 
                 if episode_data['success']:
-                    print(f"   🎥 성공 에피소드 비디오 자동 저장됨!")
+                    print(f"    성공 에피소드 비디오 자동 저장됨!")
         
         # 결과 출력
-        status = "✅ 성공" if episode_data['success'] else "❌ 실패"
+        status = " 성공" if episode_data['success'] else " 실패"
         crash_status = "충돌" if episode_data['crash'] else "안전"
         unique_segments = len(set(episode_data['segments_visited']))
         
         print(f"   {status} - {step}스텝, 보상={episode_data['total_reward']:.2f}, {crash_status}")
         print(f"   방문 구간: {unique_segments}개")
         if video_saved:
-            print(f"   📹 비디오 저장됨")
+            print(f"    비디오 저장됨")
         
         return episode_data
     
@@ -254,7 +242,7 @@ class ModelTester:
         if not frames:
             return
             
-        print(f"   🎥 비디오 저장 중: {filename}")
+        print(f"    비디오 저장 중: {filename}")
         
         try:
             height, width, layers = frames[0].shape
@@ -266,17 +254,17 @@ class ModelTester:
                 video.write(frame_bgr)
             
             video.release()
-            print(f"   ✅ 비디오 저장 완료: {filename}")
+            print(f"    비디오 저장 완료: {filename}")
             
         except Exception as e:
-            print(f"   ❌ 비디오 저장 실패: {e}")
+            print(f"    비디오 저장 실패: {e}")
     
     def run_multiple_episodes(self, n_episodes: int = 10, save_videos: bool = False, 
                              auto_save_success: bool = True) -> Dict:
         """여러 에피소드 실행 및 통계 분석"""
-        print(f"\n📊 {n_episodes}개 에피소드 테스트 시작")
+        print(f"\n {n_episodes}개 에피소드 테스트 시작")
         if auto_save_success:
-            print("🎥 성공한 에피소드는 자동으로 비디오 저장됩니다")
+            print(" 성공한 에피소드는 자동으로 비디오 저장됩니다")
         
         all_results = []
         success_count = 0
@@ -320,7 +308,7 @@ class ModelTester:
         }
         
         # 결과 출력
-        print(f"\n📈 테스트 결과 요약:")
+        print(f"\n 테스트 결과 요약:")
         print(f"   • 성공률: {stats['success_rate']:.1%} ({success_count}/{n_episodes})")
         print(f"   • 충돌률: {stats['crash_rate']:.1%} ({crash_count}/{n_episodes})")
         print(f"   • 평균 보상: {stats['avg_reward']:.2f} ± {stats['std_reward']:.2f}")
@@ -333,7 +321,7 @@ class ModelTester:
     
     def visualize_performance(self, stats: Dict, save_path: str = "model_performance.png"):
         """성능 시각화"""
-        print(f"\n📊 성능 시각화 중... (저장 경로: {save_path})")
+        print(f"\n 성능 시각화 중... (저장 경로: {save_path})")
         
         fig, axes = plt.subplots(2, 3, figsize=(18, 12))
         fig.suptitle('훈련된 모델 성능 분석', fontsize=16, fontweight='bold')
@@ -484,7 +472,7 @@ class ModelTester:
         with open(save_path, 'w', encoding='utf-8') as f:
             json.dump(save_data, f, indent=2, ensure_ascii=False)
         
-        print(f"✅ 테스트 결과 저장 완료: {save_path}")
+        print(f" 테스트 결과 저장 완료: {save_path}")
     
     def cleanup(self):
         """리소스 정리"""
@@ -493,7 +481,7 @@ class ModelTester:
 
 def main():
     """메인 테스트 함수"""
-    print("🧪 훈련된 PPO 모델 테스트")
+    print(" 훈련된 PPO 모델 테스트")
     print("=" * 40)
     
     # 모델 경로 설정 (사용자가 수정 가능)
@@ -510,7 +498,7 @@ def main():
             break
     
     if model_path is None:
-        print("❌ 테스트할 모델을 찾을 수 없습니다.")
+        print(" 테스트할 모델을 찾을 수 없습니다.")
         print("   다음 경로에 모델이 있는지 확인하세요:")
         for path in model_paths:
             print(f"   • {path}")
@@ -527,11 +515,10 @@ def main():
         tester.setup_environment()
         
         # 사용자 선택
-        print("\n🎯 테스트 옵션:")
+        print("\n 테스트 옵션:")
         print("1. 단일 에피소드 (시각화 포함)")
         print("2. 다중 에피소드 성능 분석 (성공시 자동 비디오 저장)")
-        print("3. 둘 다 실행")
-        
+
         choice = input("선택하세요 (1/2/3): ").strip()
         
         if choice in ['1', '3']:
@@ -548,7 +535,7 @@ def main():
             # 다중 에피소드 테스트
             print("\n" + "="*50)
             n_episodes = 20  # 테스트할 에피소드 수
-            print("📢 성공한 에피소드는 자동으로 비디오 파일로 저장됩니다!")
+            print(" 성공한 에피소드는 자동으로 비디오 파일로 저장됩니다!")
             print("   파일명 형식: episode_N_SUCCESS_YYYYMMDD_HHMMSS.mp4")
             
             stats = tester.run_multiple_episodes(
@@ -563,15 +550,15 @@ def main():
             
             # 생성된 비디오 파일 목록 출력
             if stats.get('videos_saved', 0) > 0:
-                print(f"\n🎬 생성된 성공 비디오 파일:")
+                print(f"\n 생성된 성공 비디오 파일:")
                 video_files = [f for f in os.listdir('.') if f.startswith('episode_') and 'SUCCESS' in f and f.endswith('.mp4')]
                 for video_file in sorted(video_files)[-stats['videos_saved']:]:
-                    print(f"   📹 {video_file}")
+                    print(f"    {video_file}")
         
-        print("\n🎉 테스트 완료!")
+        print("\n 테스트 완료!")
         
     except Exception as e:
-        print(f"\n❌ 테스트 중 오류 발생: {e}")
+        print(f"\n 테스트 중 오류 발생: {e}")
         import traceback
         traceback.print_exc()
         
