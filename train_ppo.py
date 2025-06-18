@@ -9,9 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
-# 한글 폰트 설정
 def setup_korean_font():
-    """macOS에서 한글 폰트 설정"""
+
     try:
         # macOS에서 사용 가능한 한글 폰트 목록
         korean_fonts = [
@@ -30,7 +29,7 @@ def setup_korean_font():
             if font in available_fonts:
                 plt.rcParams['font.family'] = font
                 plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
-                print(f"✅ 한글 폰트 설정 완료: {font}")
+                print(f" 한글 폰트 설정 완료: {font}")
                 return True
         
         # 한글 폰트를 찾지 못한 경우 기본 설정
@@ -55,7 +54,6 @@ import time
 from typing import Dict, Any
 
 class TrainingConfig:
-    """M1 Mac용 간소화된 훈련 설정"""
     
     def __init__(self):
         # 환경 설정
@@ -65,9 +63,9 @@ class TrainingConfig:
         # PPO 하이퍼파라미터 (M1 Mac 최적화)
         self.total_timesteps = 100_000  # 로컬 테스트용으로 줄임
         self.learning_rate = 3e-4
-        self.n_steps = 1024  # 단일 환경용으로 줄임
+        self.n_steps = 1024  
         self.batch_size = 64
-        self.n_epochs = 4    # 빠른 훈련을 위해 줄임
+        self.n_epochs = 4    
         self.gamma = 0.99
         self.gae_lambda = 0.95
         self.clip_range = 0.2
@@ -79,12 +77,12 @@ class TrainingConfig:
         self.env_config = {
             "observation": {"type": "Kinematics"},
             "action": {"type": "DiscreteMetaAction"},
-            "vehicles_count": 3,   # 차량 수 대폭 감소 (10 -> 3)
+            "vehicles_count": 3,  
             "controlled_vehicles": 1,
-            "duration": 100,       # 에피소드 길이 증가 (60 -> 100)
+            "duration": 100,       
             "simulation_frequency": 15,
             "policy_frequency": 5,
-            "normalize_reward": False,  # 정규화 비활성화로 보상 확인
+            "normalize_reward": False,  #
             "collision_reward": -50,    # 충돌 패널티 증가
             "offroad_terminal": False,  # 도로 이탈시 즉시 종료 방지
             "roundabout_exit_target": "north",
@@ -96,10 +94,9 @@ class TrainingConfig:
         self.log_dir = "./logs/"
         self.model_dir = "./models/"
         self.tensorboard_log = "./tensorboard/"
-        self.eval_freq = 5000   # 평가 주기
-        self.save_freq = 10000  # 모델 저장 주기
+        self.eval_freq = 5000   
+        self.save_freq = 10000  
         
-        # M1 Mac GPU 지원
         self.device = self._get_device()
         
         # 디렉토리 생성
@@ -108,7 +105,6 @@ class TrainingConfig:
         os.makedirs(self.tensorboard_log, exist_ok=True)
     
     def _get_device(self):
-        """M1 Mac에 최적화된 디바이스 선택"""
         if torch.backends.mps.is_available():
             print(" MPS (Metal Performance Shaders) 사용 가능!")
             return "mps"
@@ -120,7 +116,6 @@ class TrainingConfig:
             return "cpu"
 
 class SimpleProgressCallback(BaseCallback):
-    """간단한 진행 상황 콜백"""
     
     def __init__(self, check_freq: int = 1000):
         super().__init__()
@@ -149,7 +144,6 @@ class SimpleProgressCallback(BaseCallback):
         return True
 
 def create_single_env(config: TrainingConfig):
-    """단일 환경 생성"""
     env = gym.make(config.env_id)
     env.unwrapped.configure(config.env_config)
     env = Monitor(env, config.log_dir + "training_env")
@@ -347,7 +341,7 @@ def main():
         print("   부분적으로 훈련된 모델이 저장되었을 수 있습니다.")
         
     except Exception as e:
-        print(f"\n❌ 훈련 중 오류 발생: {e}")
+        print(f"\n 훈련 중 오류 발생: {e}")
         import traceback
         traceback.print_exc()
         
