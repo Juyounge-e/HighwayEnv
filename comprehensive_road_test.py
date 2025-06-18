@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 도로 주행 가능성 종합 테스트
 =========================
@@ -18,6 +17,7 @@ import gymnasium as gym
 import highway_env
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 from matplotlib.patches import Circle
 from matplotlib.animation import FuncAnimation, PillowWriter
 import json
@@ -25,6 +25,42 @@ import time
 import os
 from typing import Dict, List, Tuple, Optional
 import cv2
+
+def setup_korean_font():
+    """macOS에서 한글 폰트 설정"""
+    try:
+        # macOS에서 사용 가능한 한글 폰트 목록
+        korean_fonts = [
+            'Apple SD Gothic Neo',
+            'Noto Sans CJK KR',
+            'Malgun Gothic',
+            'NanumGothic',
+            'AppleGothic'
+        ]
+        
+        # 시스템에 설치된 폰트 목록 가져오기
+        available_fonts = [f.name for f in fm.fontManager.ttflist]
+        
+        # 사용 가능한 한글 폰트 찾기
+        for font in korean_fonts:
+            if font in available_fonts:
+                plt.rcParams['font.family'] = font
+                plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
+                print(f" 한글 폰트 설정 완료: {font}")
+                return True
+        
+        # 한글 폰트를 찾지 못한 경우 기본 설정
+        print(" 한글 폰트를 찾을 수 없어 기본 설정을 사용합니다.")
+        plt.rcParams['axes.unicode_minus'] = False
+        return False
+        
+    except Exception as e:
+        print(f" 폰트 설정 중 오류 발생: {e}")
+        plt.rcParams['axes.unicode_minus'] = False
+        return False
+
+# 한글 폰트 설정 실행
+setup_korean_font()
 
 class RoadTester:
     def __init__(self):
@@ -35,7 +71,7 @@ class RoadTester:
         
     def setup_environment(self, vehicles_count: int = 0, duration: int = 200):
         """환경 설정"""
-        print("🔧 환경 설정 중...")
+        print(" 환경 설정 중...")
         
         self.env = gym.make("custom-mixed-road-v0", render_mode="rgb_array")
         
@@ -54,11 +90,10 @@ class RoadTester:
             "completion_distance": 50,                  # 완료 거리
         })
         
-        print(f"✅ 환경 설정 완료 (차량 수: {vehicles_count}, 지속 시간: {duration})")
+        print(f"환경 설정 완료 (차량 수: {vehicles_count}, 지속 시간: {duration})")
         
     def analyze_road_network(self) -> Dict:
-        """도로 네트워크 구조 분석"""
-        print("\n🗺️  도로 네트워크 분석 중...")
+        print("\n  도로 네트워크 분석 중...")
         
         obs, info = self.env.reset()
         road = self.env.unwrapped.road
@@ -98,7 +133,7 @@ class RoadTester:
             "nodes": nodes
         }
         
-        print(f"📊 네트워크 분석 결과:")
+        print(f" 네트워크 분석 결과:")
         print(f"   - 총 노드 수: {analysis['total_nodes']}")
         print(f"   - 총 차선 수: {analysis['total_lanes']}")
         print(f"   - 고속도로 구간: {analysis['highway_segments']}")
@@ -112,11 +147,11 @@ class RoadTester:
                             max_steps: int = 1000, enable_visual: bool = False, 
                             save_video: bool = False) -> Dict:
         """특정 주행 전략 테스트"""
-        print(f"\n🚗 주행 전략 테스트: {strategy_name}")
+        print(f"\n 주행 전략 테스트: {strategy_name}")
         if enable_visual:
-            print("   👁️  시각적 모니터링 활성화")
+            print("     시각적 모니터링 활성화")
         if save_video:
-            print("   🎥 비디오 저장 활성화")
+            print("    비디오 저장 활성화")
         
         obs, info = self.env.reset()
         
@@ -199,13 +234,12 @@ class RoadTester:
             
             step += 1
             action_idx += 1
-            
-            # 안전 장치: 같은 위치에 너무 오래 머물면 중단
+
             if len(trajectory) > 20:
                 recent_positions = [t['position'] for t in trajectory[-20:]]
                 if all(np.linalg.norm(np.array(pos) - np.array(recent_positions[0])) < 2.0 
                        for pos in recent_positions):
-                    print(f"   ⚠️  같은 위치에서 정체 감지, 테스트 중단")
+                    print(f"     같은 위치에서 정체 감지, 테스트 중단")
                     break
         
         # 시각화 정리
@@ -250,13 +284,13 @@ class RoadTester:
         }
         
         # 결과 출력
-        status = "✅ 성공" if result['success'] else "❌ 실패"
+        status = " 성공" if result['success'] else " 실패"
         crash_status = "충돌" if result['crashed'] else "안전"
         
         print(f"   {status} - {step}스텝, 거리={total_distance:.1f}m, {crash_status}")
         print(f"   방문 구간: {len(unique_segments)}개 - {unique_segments}")
         if save_video:
-            print(f"   🎥 {len(frames)}개 프레임 캡처됨")
+            print(f"    {len(frames)}개 프레임 캡처됨")
         
         return result
     
@@ -265,7 +299,7 @@ class RoadTester:
         if not frames:
             return
             
-        print(f"   🎥 비디오 저장 중: {filename}")
+        print(f"    비디오 저장 중: {filename}")
         
         try:
             # OpenCV를 사용한 비디오 저장
@@ -279,19 +313,19 @@ class RoadTester:
                 video.write(frame_bgr)
             
             video.release()
-            print(f"   ✅ 비디오 저장 완료: {filename}")
+            print(f"    비디오 저장 완료: {filename}")
             
         except Exception as e:
-            print(f"   ❌ 비디오 저장 실패: {e}")
+            print(f"    비디오 저장 실패: {e}")
             # 대안: matplotlib을 사용한 GIF 저장
             try:
                 self._save_gif(frames, filename.replace('.mp4', '.gif'))
             except Exception as e2:
-                print(f"   ❌ GIF 저장도 실패: {e2}")
+                print(f"   GIF 저장도 실패: {e2}")
     
     def _save_gif(self, frames: List[np.ndarray], filename: str):
         """프레임들을 GIF 파일로 저장"""
-        print(f"   🎞️  GIF 저장 중: {filename}")
+        print(f"    GIF 저장 중: {filename}")
         
         fig, ax = plt.subplots(figsize=(10, 8))
         ax.axis('off')
@@ -305,15 +339,15 @@ class RoadTester:
         anim = FuncAnimation(fig, animate, frames=len(frames), interval=100, repeat=True)
         anim.save(filename, writer=PillowWriter(fps=10))
         plt.close(fig)
-        print(f"   ✅ GIF 저장 완료: {filename}")
+        print(f"    GIF 저장 완료: {filename}")
     
     def run_comprehensive_test(self, enable_visual: bool = False, save_videos: bool = False) -> Dict:
         """종합 테스트 실행"""
-        print("\n🎯 종합 도로 주행 테스트 시작")
+        print("\n 종합 도로 주행 테스트 시작")
         if enable_visual:
-            print("👁️  시각적 모니터링 모드 활성화")
+            print(" 시각적 모니터링 모드 활성화")
         if save_videos:
-            print("🎥 비디오 저장 모드 활성화")
+            print(" 비디오 저장 모드 활성화")
         print("=" * 50)
         
         # 1. 도로 네트워크 분석
@@ -346,13 +380,13 @@ class RoadTester:
                 
                 # 성공한 전략이 있으면 상세 분석
                 if result['success']:
-                    print(f"🎉 {strategy_name} 전략으로 완주 성공!")
+                    print(f" {strategy_name} 전략으로 완주 성공!")
                     self.trajectory_data = result['trajectory']
                     successful_strategy_found = True
                     
                     # 성공한 전략은 반드시 비디오 저장
                     if not video_mode and save_videos:
-                        print("   🎥 성공한 전략 재실행하여 비디오 저장...")
+                        print("    성공한 전략 재실행하여 비디오 저장...")
                         success_result = self.test_driving_strategy(
                             f"{strategy_name}_SUCCESS", action_sequence, max_steps=800,
                             enable_visual=False, save_video=True
@@ -360,7 +394,7 @@ class RoadTester:
                     break
                     
             except Exception as e:
-                print(f"   ❌ {strategy_name} 전략 테스트 중 오류: {e}")
+                print(f"    {strategy_name} 전략 테스트 중 오류: {e}")
                 test_results[strategy_name] = {'error': str(e), 'success': False}
         
         # 3. 결과 종합
@@ -382,10 +416,10 @@ class RoadTester:
     def create_episode_playback(self, save_path: str = "episode_playback.gif"):
         """마지막 에피소드의 재생 가능한 시각화 생성"""
         if not self.episode_frames:
-            print("❌ 저장된 에피소드 프레임이 없습니다.")
+            print(" 저장된 에피소드 프레임이 없습니다.")
             return
         
-        print(f"\n🎬 에피소드 재생 시각화 생성 중... (저장 경로: {save_path})")
+        print(f"\n 에피소드 재생 시각화 생성 중... (저장 경로: {save_path})")
         
         # 인터랙티브 재생기 생성
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8))
@@ -454,16 +488,15 @@ Status: {'Crashed' if current_data['crashed'] else 'OK'}
         # 저장
         try:
             anim.save(save_path, writer=PillowWriter(fps=5))
-            print(f"✅ 에피소드 재생 시각화 저장 완료: {save_path}")
+            print(f" 에피소드 재생 시각화 저장 완료: {save_path}")
         except Exception as e:
-            print(f"❌ 에피소드 재생 시각화 저장 실패: {e}")
+            print(f" 에피소드 재생 시각화 저장 실패: {e}")
         
         plt.close(fig)
         return anim
     
     def visualize_results(self, results: Dict, save_path: str = "road_test_results.png"):
-        """결과 시각화 (개선된 버전)"""
-        print(f"\n📊 결과 시각화 중... (저장 경로: {save_path})")
+        print(f"\n 결과 시각화 중... (저장 경로: {save_path})")
         
         fig, axes = plt.subplots(2, 3, figsize=(18, 12))
         fig.suptitle('도로 주행 가능성 테스트 결과', fontsize=16, fontweight='bold')
@@ -581,17 +614,17 @@ Status: {'Crashed' if current_data['crashed'] else 'OK'}
         result_text = f"""
 종합 테스트 결과
 
-✅ 도로 완주 가능: {'예' if results['road_completable'] else '아니오'}
+ 도로 완주 가능: {'예' if results['road_completable'] else '아니오'}
 
-📊 네트워크 정보:
+ 네트워크 정보:
    • 총 노드: {network['total_nodes']}개
    • 총 차선: {network['total_lanes']}개
 
-🚗 테스트된 전략: {len(strategy_names)}개
+ 테스트된 전략: {len(strategy_names)}개
    • 성공한 전략: {len(results['successful_strategies'])}개
    • 성공률: {len(results['successful_strategies'])/len(strategy_names)*100:.1f}%
 
-🎯 성공 전략:
+ 성공 전략:
 """
         
         for strategy in results['successful_strategies']:
@@ -602,24 +635,24 @@ Status: {'Crashed' if current_data['crashed'] else 'OK'}
         
         # 시각적 기능 사용 여부 표시
         if results.get('visual_enabled'):
-            result_text += "\n👁️  시각적 모니터링 사용됨"
+            result_text += "\n  시각적 모니터링 사용됨"
         if results.get('videos_saved'):
-            result_text += "\n🎥 비디오 저장됨"
+            result_text += "\n 비디오 저장됨"
         
-        result_text += f"\n⏰ 테스트 시간: {results['test_timestamp']}"
+        result_text += f"\n 테스트 시간: {results['test_timestamp']}"
         
         ax6.text(0.05, 0.95, result_text, transform=ax6.transAxes, fontsize=9,
                 verticalalignment='top', fontfamily='monospace')
         
         plt.tight_layout()
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"✅ 결과 시각화 완료: {save_path}")
+        print(f" 결과 시각화 완료: {save_path}")
         
         return fig
 
     def save_detailed_report(self, results: Dict, save_path: str = "road_test_report.json"):
         """상세 보고서 저장"""
-        print(f"\n💾 상세 보고서 저장 중... (저장 경로: {save_path})")
+        print(f"\n 상세 보고서 저장 중... (저장 경로: {save_path})")
         
         # JSON 직렬화를 위해 numpy 배열 변환
         def convert_numpy(obj):
@@ -641,41 +674,41 @@ Status: {'Crashed' if current_data['crashed'] else 'OK'}
         with open(save_path, 'w', encoding='utf-8') as f:
             json.dump(clean_results, f, indent=2, ensure_ascii=False)
         
-        print(f"✅ 상세 보고서 저장 완료: {save_path}")
+        print(f" 상세 보고서 저장 완료: {save_path}")
     
     def print_summary(self, results: Dict):
         """결과 요약 출력"""
         print("\n" + "="*60)
-        print("🎯 도로 주행 가능성 테스트 최종 결과")
+        print(" 도로 주행 가능성 테스트 최종 결과")
         print("="*60)
         
         if results['road_completable']:
-            print("✅ 결론: 이 도로는 단독 에이전트로 완주 가능합니다!")
+            print(" 결론: 이 도로는 단독 에이전트로 완주 가능합니다!")
             print(f"   성공한 전략: {', '.join(results['successful_strategies'])}")
         else:
-            print("❌ 결론: 현재 도로 구조에서는 완주가 어렵습니다.")
+            print(" 결론: 현재 도로 구조에서는 완주가 어렵습니다.")
             print("   가능한 문제:")
             print("   • 도로 연결 불완전")
             print("   • 차선 변경 불가능 구간")
             print("   • 회전교차로 진입/진출 문제")
         
-        print(f"\n📊 테스트 통계:")
+        print(f"\n 테스트 통계:")
         print(f"   • 테스트된 전략 수: {len(results['strategy_results'])}")
         print(f"   • 성공률: {len(results['successful_strategies'])}/{len(results['strategy_results'])}")
         print(f"   • 도로 구간 수: {results['network_analysis']['total_nodes']}")
         
         # 시각적 기능 사용 여부
         if results.get('visual_enabled'):
-            print(f"   • 👁️  시각적 모니터링 사용됨")
+            print(f"   •   시각적 모니터링 사용됨")
         if results.get('videos_saved'):
-            print(f"   • 🎥 비디오 파일 저장됨")
+            print(f"   •  비디오 파일 저장됨")
         
         # 실패한 전략들의 공통 실패 지점 분석
         failed_strategies = {name: result for name, result in results['strategy_results'].items() 
                            if not result.get('success', False)}
         
         if failed_strategies:
-            print(f"\n❌ 실패 분석:")
+            print(f"\n 실패 분석:")
             for name, result in failed_strategies.items():
                 if 'error' in result:
                     print(f"   • {name}: 오류 - {result['error']}")
@@ -696,7 +729,7 @@ Status: {'Crashed' if current_data['crashed'] else 'OK'}
 
 def main():
     """메인 테스트 실행"""
-    print("🚗 도로 주행 가능성 종합 테스트 시작")
+    print(" 도로 주행 가능성 종합 테스트 시작")
     print("이 테스트는 custom-mixed-road 환경에서 단독 에이전트의 완주 가능성을 검증합니다.\n")
     
     # 사용자 옵션 (필요에 따라 수정)
@@ -730,7 +763,7 @@ def main():
         tester.print_summary(results)
         
         # 생성된 파일 목록
-        print(f"\n📁 생성된 파일들:")
+        print(f"\n 생성된 파일들:")
         generated_files = []
         if os.path.exists("road_test_results.png"):
             generated_files.append("road_test_results.png")
@@ -749,14 +782,14 @@ def main():
             print(f"   • {file}")
         
     except Exception as e:
-        print(f"❌ 테스트 중 오류 발생: {e}")
+        print(f" 테스트 중 오류 발생: {e}")
         import traceback
         traceback.print_exc()
     
     finally:
         # 리소스 정리
         tester.cleanup()
-        print("\n🏁 테스트 완료")
+        print("\n 테스트 완료")
 
 if __name__ == "__main__":
     main() 
