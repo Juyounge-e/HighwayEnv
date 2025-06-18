@@ -21,7 +21,7 @@ for lane_id, lane in road.network.lanes_dict().items():
         label = f"{lane_id[0]}→{lane_id[1]} ({lane_id[2]})"
         ax.plot(xs, ys, label=label)
     except Exception as e:
-        print(f"❌ {lane_id} 시각화 오류: {e}")
+        print(f"{lane_id} 시각화 오류: {e}")
 
 # 전체 범위 계산
 if xs_all and ys_all:
