@@ -1,0 +1,176 @@
+{
+  "model_path": "./models/best_model.zip",
+  "test_summary": {
+    "n_episodes": 20,
+    "success_rate": 0.25,
+    "crash_rate": 0.75,
+    "avg_reward": 152.13480119622085,
+    "std_reward": 120.05134586710743,
+    "avg_length": 202.15,
+    "std_length": 173.85289039875065,
+    "max_reward": 357.66557017678946,
+    "min_reward": 45.43258313647598
+  },
+  "episode_details": [
+    {
+      "episode": 1,
+      "total_reward": 87.36072881373278,
+      "steps": 108,
+      "success": false,
+      "crash": true,
+      "segments_visited": 4
+    },
+    {
+      "episode": 2,
+      "total_reward": 70.35420091982554,
+      "steps": 80,
+      "success": false,
+      "crash": true,
+      "segments_visited": 3
+    },
+    {
+      "episode": 3,
+      "total_reward": 102.46042164120936,
+      "steps": 130,
+      "success": false,
+      "crash": true,
+      "segments_visited": 4
+    },
+    {
+      "episode": 4,
+      "total_reward": 75.74445555723345,
+      "steps": 91,
+      "success": false,
+      "crash": true,
+      "segments_visited": 3
+    },
+    {
+      "episode": 5,
+      "total_reward": 84.38461276976538,
+      "steps": 103,
+      "success": false,
+      "crash": true,
+      "segments_visited": 3
+    },
+    {
+      "episode": 6,
+      "total_reward": 357.66557017678946,
+      "steps": 500,
+      "success": true,
+      "crash": false,
+      "segments_visited": 4
+    },
+    {
+      "episode": 7,
+      "total_reward": 357.66557017678946,
+      "steps": 500,
+      "success": true,
+      "crash": false,
+      "segments_visited": 4
+    },
+    {
+      "episode": 8,
+      "total_reward": 90.13463726225832,
+      "steps": 112,
+      "success": false,
+      "crash": true,
+      "segments_visited": 4
+    },
+    {
+      "episode": 9,
+      "total_reward": 357.66557017678946,
+      "steps": 500,
+      "success": true,
+      "crash": false,
+      "segments_visited": 4
+    },
+    {
+      "episode": 10,
+      "total_reward": 122.55303267446197,
+      "steps": 159,
+      "success": false,
+      "crash": true,
+      "segments_visited": 4
+    },
+    {
+      "episode": 11,
+      "total_reward": 45.43258313647598,
+      "steps": 52,
+      "success": false,
+      "crash": true,
+      "segments_visited": 2
+    },
+    {
+      "episode": 12,
+      "total_reward": 75.75778715993599,
+      "steps": 91,
+      "success": false,
+      "crash": true,
+      "segments_visited": 3
+    },
+    {
+      "episode": 13,
+      "total_reward": 120.48556335978533,
+      "steps": 156,
+      "success": false,
+      "crash": true,
+      "segments_visited": 4
+    },
+    {
+      "episode": 14,
+      "total_reward": 91.47875636780405,
+      "steps": 114,
+      "success": false,
+      "crash": true,
+      "segments_visited": 4
+    },
+    {
+      "episode": 15,
+      "total_reward": 83.5280861947194,
+      "steps": 102,
+      "success": false,
+      "crash": true,
+      "segments_visited": 3
+    },
+    {
+      "episode": 16,
+      "total_reward": 357.66557017678946,
+      "steps": 500,
+      "success": true,
+      "crash": false,
+      "segments_visited": 4
+    },
+    {
+      "episode": 17,
+      "total_reward": 75.7323584507839,
+      "steps": 91,
+      "success": false,
+      "crash": true,
+      "segments_visited": 3
+    },
+    {
+      "episode": 18,
+      "total_reward": 83.5283655960019,
+      "steps": 102,
+      "success": false,
+      "crash": true,
+      "segments_visited": 3
+    },
+    {
+      "episode": 19,
+      "total_reward": 45.43258313647598,
+      "steps": 52,
+      "success": false,
+      "crash": true,
+      "segments_visited": 2
+    },
+    {
+      "episode": 20,
+      "total_reward": 357.66557017678946,
+      "steps": 500,
+      "success": true,
+      "crash": false,
+      "segments_visited": 4
+    }
+  ]
+}
