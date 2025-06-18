@@ -39,9 +39,6 @@ class MixedRoadEnv(AbstractEnv):
                 "success_reward": 10.0,             # 성공적 탈출시 보상
                 "completion_distance": 50,          # 출구에서 이 거리만큼 나가면 완료
 
-                # ================================================================
-                # 구간별 보상 정책 (라벨 기반)
-                # ================================================================
                 "segment_configs": {
                     "default": {
                         "collision_reward": -1,
@@ -53,39 +50,42 @@ class MixedRoadEnv(AbstractEnv):
                         "collision_reward": -1,           # 충돌 패널티
                         "high_speed_reward": 0.4,         # 고속 주행 보상 (주요)
                         "right_lane_reward": 0.1,         # 우측 차선 유지 보상
-                        "lane_change_reward": -0.1,       # 불필요한 차선 변경 패널티
+                        "lane_change_reward": 0.2,        # 차선 변경 보상 증가 (적절한 상황에서)
                         "on_road_reward": 0.2,            # 도로 내 유지 보상
                         "off_road_penalty": -0.5,         # 차선 이탈 패널티
                         "reward_speed_range": [25, 35],   # 목표 속도 범위
                         "normalize_reward": True,
+                        "overtaking_reward": 0.3,         # 추월 보상 추가
+                        "safe_following_reward": 0.1,     # 안전한 거리 유지 보상
                     },
                     
                     # 합류 구간: 우측 진입차량과 병합, 안전거리 유지, 차선 변경 보상
                     "merge": {
-                        "collision_reward": -1,           # 충돌 패널티 (중요)
-                        "safe_distance_reward": 0.3,     # 안전거리 유지 보상 (주요)
-                        "merge_cooperation_reward": 0.2,  # 합류 협력 보상
-                        "lane_change_reward": 0.1,       # 적절한 차선 변경 보상
-                        "speed_adaptation_reward": 0.15,  # 속도 조절 보상
-                        "right_lane_reward": 0.1,        # 우측 차선 선호
-                        "high_speed_reward": 0.1,        # 적정 속도 유지
-                        "reward_speed_range": [20, 30],  # 합류 적정 속도
-                        "blocking_penalty": -0.3,        # 합류 방해 패널티
+                        "collision_reward": -1,           
+                        "safe_distance_reward": 0.3,     
+                        "merge_cooperation_reward": 0.2,  
+                        "lane_change_reward": 0.3,       
+                        "speed_adaptation_reward": 0.15,  
+                        "right_lane_reward": 0.1,      
+                        "high_speed_reward": 0.1,        
+                        "reward_speed_range": [20, 30],  
+                        "blocking_penalty": -0.3,      
+                        "overtaking_reward": 0.25,     
                     },
                     
                     # 회전교차로 구간: 진입 후 목표 출구로 탈출, 차선 유지, 중앙 충돌 회피
                     "roundabout": {
-                        "collision_reward": -1,           # 충돌 패널티 (중요)
-                        "lane_keeping_reward": 0.3,      # 차선 유지 보상 (주요)
-                        "smooth_turning_reward": 0.25,   # 부드러운 회전 보상
-                        "progress_reward": 0.2,          # 진행 상황 보상
-                        "entry_success_reward": 0.15,    # 성공적 진입 보상
-                        "exit_preparation_reward": 0.1,  # 출구 준비 보상
-                        "speed_control_reward": 0.1,     # 적정 속도 제어
-                        "reward_speed_range": [15, 25],  # 회전교차로 적정 속도
-                        "center_collision_penalty": -0.8, # 중앙 충돌 패널티
-                        "wrong_direction_penalty": -0.5,  # 역방향 주행 패널티
-                        "target_approach_reward": 0.4,   # 목표 출구 접근 보상 (새로 추가)
+                        "collision_reward": -1,           
+                        "lane_keeping_reward": 0.3,      
+                        "smooth_turning_reward": 0.25,   
+                        "progress_reward": 0.2,         
+                        "entry_success_reward": 0.15,   
+                        "exit_preparation_reward": 0.1,  
+                        "speed_control_reward": 0.1,     
+                        "reward_speed_range": [15, 25],  
+                        "center_collision_penalty": -0.8, 
+                        "wrong_direction_penalty": -0.5,  
+                        "target_approach_reward": 0.4,   
                     },
                     
                     # 회전교차로 출구 구간: 성공적 탈출 완료
@@ -100,8 +100,7 @@ class MixedRoadEnv(AbstractEnv):
         return config
 
     def _make_road(self):
-        """고속도로 -> 합류 구간 -> 회전교차로 -> 목표 출구 순서의 복합 도로 환경을 생성합니다.
-        
+        """
         전체 구조:
         1. 고속도로 구간 (Highway Section): 2차선 직선 도로 (hw_a -> hw_b -> hw_c)
         2. 합류 구간 (Merge Section): 측면에서 합류하는 차선 (mg_j -> mg_k -> hw_b)  
@@ -115,12 +114,6 @@ class MixedRoadEnv(AbstractEnv):
         # ================================================================
         # 1. 고속도로 구간 (Highway Section)
         # ================================================================
-        # 목적: 기본적인 고속도로 주행 환경 제공
-        # 구조: hw_a -> hw_b -> hw_c (2차선 직선 도로)
-        # 특징: - 일정한 속도로 직진 주행
-        #       - 차선 변경 및 추월 가능
-        #       - 합류 구간(hw_b)에서 외부 차량 유입 처리
-        
         ends = [150, 80, 80, 150]  # [hw_a->hw_b, hw_b->hw_c(합류구간), hw_c->roundabout연결, roundabout이후]
         c, s, n = LineType.CONTINUOUS_LINE, LineType.STRIPED, LineType.NONE
         y = [0, StraightLane.DEFAULT_WIDTH]  # 2차선 Y좌표 [0, 4]
@@ -150,16 +143,10 @@ class MixedRoadEnv(AbstractEnv):
         # ================================================================
         # 2. 합류 구간 (Merge Section) 
         # ================================================================
-        # 목적: 측면 도로에서 고속도로로 합류하는 상황 시뮬레이션
-        # 구조: mg_j -> mg_k -> hw_b (직선 + 사인파 곡선)
-        # 특징: - mg_j->mg_k: 합류 준비 직선 구간
-        #       - mg_k->hw_b: 사인파 곡선으로 자연스러운 합류
-        #       - 합류 차량은 고속도로 차량과 속도/간격 조절 필요
-        
         amplitude = 3.25  # 사인파 진폭 (합류 곡선의 최대 변위)
         
         # mg_j -> mg_k: 합류 전 직선 준비 구간
-        # 고속도로보다 높은 Y좌표에서 시작하여 합류 준비
+        
         ljk = StraightLane(
             [0, 6.5 + 4 + 4],           # 시작점: 고속도로 위쪽
             [ends[0], 6.5 + 4 + 4],     # 끝점: hw_a->hw_b 경계까지
@@ -167,8 +154,6 @@ class MixedRoadEnv(AbstractEnv):
             forbidden=True              # 일반 차량 진입 금지 (합류 전용)
         )
         
-        # mg_k -> hw_b: 사인파 곡선으로 자연스러운 합류
-        # 고속도로 차선으로 부드럽게 연결되는 곡선 차선
         lkb = SineLane(
             ljk.position(ends[0], -amplitude),      # 사인파 시작점
             ljk.position(sum(ends[:2]), -amplitude), # 사인파 끝점  
@@ -185,13 +170,6 @@ class MixedRoadEnv(AbstractEnv):
         # ================================================================
         # 3. 회전교차로 구간 (Roundabout Section)
         # ================================================================
-        # 목적: 복잡한 원형 교차로 주행 상황 제공  
-        # 구조: 4방향 진입/진출 + 2차선 원형 내부 순환
-        # 특징: - 고속도로 끝(hw_c)에서 서쪽으로 진입
-        #       - 원형 내부 반시계방향 순환
-        #       - 4방향 모든 출구로 진출 가능
-        #       - 진입/진출시 사인파 곡선으로 자연스러운 연결
-        
         # hw_c 차선들의 실제 끝점 좌표 계산 (회전교차로 연결 기준점)
         merge_lane_0 = net.get_lane(("hw_b", "hw_c", 0))
         merge_lane_1 = net.get_lane(("hw_b", "hw_c", 1))
@@ -214,17 +192,14 @@ class MixedRoadEnv(AbstractEnv):
         n, c, s = LineType.NONE, LineType.CONTINUOUS, LineType.STRIPED
         line = [[c, s], [n, c]]  
         
-        # 회전교차로 중심 좌표를 인스턴스 변수로 저장 (종료 조건에서 사용)
         self.roundabout_center = center
         self.roundabout_radius = radius
         
-        # 3-1. 고속도로에서 회전교차로 서쪽 진입부로 연결
         # hw_c 끝점에서 회전교차로 서쪽 입구까지의 직선 연결 차선
         roundabout_west_entry_0 = [center[0] - access, merge_end_0[1]]  # 상단 차선 진입점
         roundabout_west_entry_1 = [center[0] - access, merge_end_1[1]]  # 하단 차선 진입점
 
         # 직선 연결 차선 생성 (hw_c -> 회전교차로 진입 준비)
-        # 경고 방지용 offset
         if np.allclose(merge_end_0, roundabout_west_entry_0):
             roundabout_west_entry_0[0] += 0.1
         if np.allclose(merge_end_1, roundabout_west_entry_1):
@@ -237,7 +212,6 @@ class MixedRoadEnv(AbstractEnv):
             merge_end_1, roundabout_west_entry_1, line_types=line[1],
         ))
 
-        # 3-2. 회전교차로 내부 원형 차선 (반시계방향 순환)
         # 8개 노드로 구성된 원형: se(남동) -> ex(동출구) -> ee(동입구) -> nx(북출구) 
         #                      -> ne(북입구) -> wx(서출구) -> we(서입구) -> sx(남출구) -> se
         for lane in [0, 1]:  
@@ -281,8 +255,6 @@ class MixedRoadEnv(AbstractEnv):
                 center, radii[lane], np.deg2rad(-270 + alpha), np.deg2rad(-270 - alpha),
                 clockwise=False, line_types=line[lane],
             ))
-
-        # 3-3. 회전교차로 4방향 진입/진출 차선
         # 각 방향별로 직선 접근 + 사인파 곡선 + 원형 연결 구조
         
         # 남쪽 방향 (South) 진입/진출
@@ -304,9 +276,8 @@ class MixedRoadEnv(AbstractEnv):
         net.add_lane("nxs", "nxr", StraightLane([center[0] + 2, center[1] - dev / 2], [center[0] + 2, center[1] - access], line_types=(n, c)))
         
         # 서쪽 방향 (West) 진입/진출 - 고속도로에서 연결되는 주요 진입점
-        # 실제 고속도로 끝점의 Y좌표를 사용하여 자연스럽게 연결
         net.add_lane("wer0", "wes", StraightLane(
-            [center[0] - access, merge_end_0[1]],      # 고속도로 상단 차선 연결
+            [center[0] - access, merge_end_0[1]],      
             [center[0] - dev / 2, merge_end_0[1]],
             line_types=(s, c)
         ))
@@ -316,7 +287,7 @@ class MixedRoadEnv(AbstractEnv):
             a, w, -np.pi / 2, line_types=(c, c)
         ))
         net.add_lane("wer1", "wxs0", StraightLane(
-            [center[0] - access, merge_end_1[1]],      # 고속도로 하단 차선 연결  
+            [center[0] - access, merge_end_1[1]],      
             [center[0] - dev / 2, merge_end_1[1]],
             line_types=(n, c)
         ))
@@ -328,29 +299,21 @@ class MixedRoadEnv(AbstractEnv):
 
         # ================================================================
         # 4. 출구 구간 (Exit Section) - 목표 달성을 위한 탈출 경로
-        # ================================================================
-        # 목적: 회전교차로에서 목표 출구로 성공적 탈출
-        # 구조: 각 방향 출구에서 충분히 멀리 연장된 직선 도로
-        # 특징: - 목표 출구 도달시 성공 완료
-        #       - 다른 출구로 나가도 부분 성공 인정
-        
+        # ================================================================        
         completion_distance = self.config.get("completion_distance", 50)
-        
-        # 북쪽 출구 연장 (주요 목표 출구)
+    
         net.add_lane("nxr", "north_exit", StraightLane(
             [center[0] + 2, center[1] - access], 
             [center[0] + 2, center[1] - access - completion_distance], 
             line_types=(n, c)
         ))
         
-        # 남쪽 출구 연장
         net.add_lane("sxr", "south_exit", StraightLane(
             [center[0] - 2, center[1] + access], 
             [center[0] - 2, center[1] + access + completion_distance], 
             line_types=(n, c)
         ))
-        
-        # 동쪽 출구 연장
+
         net.add_lane("exr", "east_exit", StraightLane(
             [center[0] + access, center[1] + 2], 
             [center[0] + access + completion_distance, center[1] + 2], 
@@ -358,28 +321,28 @@ class MixedRoadEnv(AbstractEnv):
         ))
 
         # ================================================================
-        # 5. 구간별 라벨링 (보상 시스템용)
+        # 5. 구간별 라벨링 
         # ================================================================
-        # 각 차선을 구간별로 분류하여 차별화된 보상 정책 적용
+       
         self.segment_labels = {
             # 고속도로 구간
-            ("hw_a", "hw_b"): "highway_1",           # 합류 전 일반 주행
-            ("hw_b", "hw_c"): "highway_2",           # 합류 후 안정화 구간
-            ("hw_c", "wer0"): "highway_to_roundabout", # 회전교차로 진입 준비
+            ("hw_a", "hw_b"): "highway_1",          
+            ("hw_b", "hw_c"): "highway_2",          
+            ("hw_c", "wer0"): "highway_to_roundabout", 
             ("hw_c", "wer1"): "highway_to_roundabout",
             
             # 합류 구간  
-            ("mg_j", "mg_k"): "merge_straight",      # 합류 준비 직선
-            ("mg_k", "hw_b"): "merge_entry",         # 실제 합류 진행
+            ("mg_j", "mg_k"): "merge_straight",     
+            ("mg_k", "hw_b"): "merge_entry",        
 
             # 회전교차로 진입 구간
-            ("wer0", "wes"): "roundabout_entry",     # 서쪽 진입로
+            ("wer0", "wes"): "roundabout_entry",     
             ("wer1", "wxs0"): "roundabout_entry",
-            ("wes", "we"): "roundabout_entry",       # 진입 곡선
+            ("wes", "we"): "roundabout_entry",      
             ("wxs0", "we"): "roundabout_entry",
 
             # 회전교차로 내부 순환 구간
-            ("se", "ex"): "roundabout_internal",     # 원형 내부 순환
+            ("se", "ex"): "roundabout_internal",    
             ("ex", "ee"): "roundabout_internal",
             ("ee", "nx"): "roundabout_internal", 
             ("nx", "ne"): "roundabout_internal",
@@ -389,17 +352,17 @@ class MixedRoadEnv(AbstractEnv):
             ("sx", "se"): "roundabout_internal",
             
             # 회전교차로 출구 구간
-            ("sx", "sxs"): "roundabout_exit",        # 남쪽 출구
+            ("sx", "sxs"): "roundabout_exit",        
             ("sxs", "sxr"): "roundabout_exit",
-            ("ex", "exs"): "roundabout_exit",        # 동쪽 출구
+            ("ex", "exs"): "roundabout_exit",        
             ("exs", "exr"): "roundabout_exit",
-            ("nx", "nxs"): "roundabout_exit",        # 북쪽 출구 (목표)
+            ("nx", "nxs"): "roundabout_exit",        
             ("nxs", "nxr"): "roundabout_exit",
             
             # 최종 탈출 구간
-            ("nxr", "north_exit"): "final_exit",     # 북쪽 최종 탈출 (주요 목표)
-            ("sxr", "south_exit"): "final_exit",     # 남쪽 최종 탈출
-            ("exr", "east_exit"): "final_exit",      # 동쪽 최종 탈출
+            ("nxr", "north_exit"): "final_exit",    
+            ("sxr", "south_exit"): "final_exit",    
+            ("exr", "east_exit"): "final_exit",      
         }   
         
         # 목표 출구 정보 저장 (종료 조건에서 사용)
@@ -434,21 +397,16 @@ class MixedRoadEnv(AbstractEnv):
         self._make_vehicles()
     
     def _make_vehicles(self) -> None:
-        """세 구간(고속도로, 합류, 회전교차로) 모두에 차량을 배치합니다."""
         road = self.road
         other_vehicles_type = utils.class_from_path(self.config["other_vehicles_type"])
 
         # ================================================================
         # 1. 고속도로+합류 구간 차량 배치 (기존 로직)
         # ================================================================
-        
-        # Ego 차량 배치 (고속도로 시작점)
         ego_vehicle = self.action_type.vehicle_class(
             road, road.network.get_lane(("hw_a", "hw_b", 1)).position(30, 0), speed=30
         )
         road.vehicles.append(ego_vehicle)
-
-        # 합류 차량 배치 (명시적 위치)
         merging_vehicle = other_vehicles_type(
             road, road.network.get_lane(("mg_j", "mg_k", 0)).position(110, 0), speed=20
         )
@@ -456,7 +414,6 @@ class MixedRoadEnv(AbstractEnv):
         merging_vehicle.randomize_behavior()
         road.vehicles.append(merging_vehicle)
 
-        # 고속도로 기존 차량들 (고정 위치, 랜덤 lane 선택)
         for position, speed in [(90, 29), (70, 31), (5, 31.5)]:
             lane = road.network.get_lane(("hw_a", "hw_b", self.np_random.integers(2)))
             pos = lane.position(position + self.np_random.uniform(-5, 5), 0)
@@ -469,11 +426,11 @@ class MixedRoadEnv(AbstractEnv):
         self.controlled_vehicles = [ego_vehicle]
 
         # 고속도로 구간 무작위 차량 생성 (수량 줄임)
-        reduced_vehicle_count = max(5, self.config["vehicles_count"] // 10)  # 차량 수 1/10로 대폭 줄임
+        reduced_vehicle_count = max(5, self.config["vehicles_count"] // 10)  
         for _ in range(reduced_vehicle_count):
             try:
                 vehicle = other_vehicles_type.create_random(
-                    self.road, spacing=2 / self.config["vehicles_density"]  # 간격도 2배로 늘림
+                    self.road, spacing=2 / self.config["vehicles_density"]  
                 )
                 vehicle.randomize_behavior()
                 road.vehicles.append(vehicle)
@@ -482,15 +439,13 @@ class MixedRoadEnv(AbstractEnv):
                 break
 
         # ================================================================
-        # 2. 회전교차로 구간 차량 배치 (올바른 방식)
+        # 2. 회전교차로 구간 차량 배치 
         # ================================================================
         
         roundabout_vehicles_created = 0
         
-        # 디버깅: 네트워크 구조 확인
         print("도로 네트워크 구조 확인:")
-        
-        # RoadNetwork의 올바른 접근 방식
+
         print("네트워크 노드들:")
         for from_node in road.network.graph.keys():
             connections = road.network.graph[from_node]
@@ -520,8 +475,7 @@ class MixedRoadEnv(AbstractEnv):
                     print(f"  {lane_key}")
         
         print(f"\n총 실제 차선 수: {len(actual_lanes)}")
-        
-        # 회전교차로 관련 차선 필터링
+
         roundabout_lanes = []
         for lane_key in actual_lanes:
             from_node, to_node, lane_index = lane_key
@@ -535,7 +489,7 @@ class MixedRoadEnv(AbstractEnv):
         # 회전교차로 차량 배치
         position_deviation = 2
         speed_deviation = 2
-        destinations = ["exr", "sxr", "nxr"]  # 원본과 동일한 목적지 설정
+        destinations = ["exr", "sxr", "nxr"] 
         
         # 1. 주요 순환 차량 (we -> sx, lane 1) - 원본과 동일
         try:
@@ -753,9 +707,59 @@ class MixedRoadEnv(AbstractEnv):
                 except (AttributeError, TypeError):
                     rewards["off_road_penalty"] = 0.0
             
-            # 불필요한 차선 변경 패널티
+            # 차선 변경 보상 (상황에 맞는 적절한 차선 변경)
             if "lane_change_reward" in segment_config:
-                rewards["lane_change_reward"] = float(action in [0, 2])  # LANE_LEFT, LANE_RIGHT
+                lane_change_reward = 0.0
+                if action in [0, 2]:  # LANE_LEFT, LANE_RIGHT
+                    # 앞차와의 거리가 가까워서 추월이 필요한 상황
+                    front_vehicle, _ = self.road.neighbour_vehicles(self.vehicle)
+                    if front_vehicle and hasattr(front_vehicle, 'position') and front_vehicle.position is not None:
+                        distance = front_vehicle.position[0] - self.vehicle.position[0]
+                        if distance < 25:  # 25m 이내에 앞차가 있으면
+                            lane_change_reward = 1.0  # 높은 보상
+                        elif distance < 50:  # 50m 이내면 중간 보상
+                            lane_change_reward = 0.5
+                    else:
+                        # 앞차가 없는 상황에서의 불필요한 차선 변경은 작은 패널티
+                        lane_change_reward = -0.1
+                
+                rewards["lane_change_reward"] = lane_change_reward
+                
+            # 추월 보상 (새로 추가)
+            if "overtaking_reward" in segment_config:
+                try:
+                    overtaking_reward = 0.0
+                    front_vehicle, _ = self.road.neighbour_vehicles(self.vehicle)
+                    if front_vehicle and hasattr(front_vehicle, 'position') and front_vehicle.position is not None:
+                        distance = front_vehicle.position[0] - self.vehicle.position[0]
+                        # 성공적인 추월 상황 (앞차를 추월한 경우)
+                        if hasattr(self.vehicle, '_last_front_vehicle_distance'):
+                            if (self.vehicle._last_front_vehicle_distance > 0 and 
+                                distance < -5):  # 앞차를 추월했음
+                                overtaking_reward = 1.0
+                        self.vehicle._last_front_vehicle_distance = distance
+                    
+                    rewards["overtaking_reward"] = overtaking_reward
+                except (AttributeError, TypeError, ValueError):
+                    rewards["overtaking_reward"] = 0.0
+                    
+            # 안전한 거리 유지 보상 (새로 추가)  
+            if "safe_following_reward" in segment_config:
+                try:
+                    front_vehicle, _ = self.road.neighbour_vehicles(self.vehicle)
+                    if front_vehicle and hasattr(front_vehicle, 'position') and front_vehicle.position is not None:
+                        distance = front_vehicle.position[0] - self.vehicle.position[0]
+                        # 적절한 거리 유지 (15-30m)
+                        if 15 <= distance <= 30:
+                            rewards["safe_following_reward"] = 1.0
+                        elif 10 <= distance < 15 or 30 < distance <= 40:
+                            rewards["safe_following_reward"] = 0.5
+                        else:
+                            rewards["safe_following_reward"] = 0.0
+                    else:
+                        rewards["safe_following_reward"] = 0.0
+                except (AttributeError, TypeError, ValueError):
+                    rewards["safe_following_reward"] = 0.0
 
         # ================================================================
         # 합류 구간 보상: 우측 진입차량과 병합, 안전거리 유지, 차선 변경 보상
@@ -932,43 +936,41 @@ class MixedRoadEnv(AbstractEnv):
         # ================================================================
         # 구간별 종료 조건
         # ================================================================
-        
-        # ★ 최종 탈출 구간: 성공 완료! ★
+
         if main_segment == "final_exit":
             try:
                 # 목표 출구에서 충분히 멀리 나갔는지 확인
                 completion_distance = self.config.get("completion_distance", 50)
                 
-                # 목표 출구별 완료 조건
+       
                 target_exit = self.config.get("roundabout_exit_target", "north")
                 center = self.roundabout_center
                 
                 if target_exit == "north" and segment_key == ("nxr", "north_exit"):
-                    # 북쪽 출구: Y좌표가 충분히 작아졌는지 확인
+                  
                     if self.vehicle.position[1] <= center[1] - 170 - completion_distance * 0.8:
-                        print(f"🎉 목표 달성! 북쪽 출구로 성공적 탈출 완료!")
+                        print(f" 목표 달성! 북쪽 출구로 성공적 탈출 완료!")
                         return True
                 elif target_exit == "south" and segment_key == ("sxr", "south_exit"):
-                    # 남쪽 출구: Y좌표가 충분히 커졌는지 확인
+             
                     if self.vehicle.position[1] >= center[1] + 170 + completion_distance * 0.8:
-                        print(f"🎉 목표 달성! 남쪽 출구로 성공적 탈출 완료!")
+                        print(f" 목표 달성! 남쪽 출구로 성공적 탈출 완료!")
                         return True
                 elif target_exit == "east" and segment_key == ("exr", "east_exit"):
-                    # 동쪽 출구: X좌표가 충분히 커졌는지 확인
+           
                     if self.vehicle.position[0] >= center[0] + 170 + completion_distance * 0.8:
-                        print(f"🎉 목표 달성! 동쪽 출구로 성공적 탈출 완료!")
+                        print(f" 목표 달성! 동쪽 출구로 성공적 탈출 완료!")
                         return True
                 
-                # 다른 출구로 나간 경우도 부분 성공으로 인정
                 if (segment_key in [("nxr", "north_exit"), ("sxr", "south_exit"), ("exr", "east_exit")] and
                     segment_key != (f"{target_exit[0]}xr", f"{target_exit}_exit")):
-                    print(f"✅ 부분 성공! {segment_key[1].replace('_exit', '')} 출구로 탈출 완료 (목표는 {target_exit})")
+                    print(f" 부분 성공! {segment_key[1].replace('_exit', '')} 출구로 탈출 완료 (목표는 {target_exit})")
                     return True
                     
             except (AttributeError, TypeError, ValueError, IndexError):
                 pass
         
-        # 고속도로 구간: 충돌시에만 종료 (중간 통과지점)
+        # 고속도로 구간: 충돌시에만 종료 
         if main_segment == "highway":
             try:
                 return (self.vehicle.crashed or 
@@ -982,7 +984,7 @@ class MixedRoadEnv(AbstractEnv):
                 if self.vehicle.crashed:
                     return True
                     
-                # 정체 상황 감지 (속도가 5km/h 이하로 10초 이상 지속)
+                # 정체 상황 감지 
                 if not hasattr(self, '_low_speed_counter'):
                     self._low_speed_counter = 0
                 
@@ -994,7 +996,7 @@ class MixedRoadEnv(AbstractEnv):
                     
                     # 10초 이상 정체시 종료 (더 관대하게 조정)
                     if self._low_speed_counter > 10 * 10:  # 10Hz * 10초
-                        print(f"❌ 합류 구간에서 장시간 정체로 인한 실패")
+                        print(f" 합류 구간에서 장시간 정체로 인한 실패")
                         return True
                         
             except (AttributeError, TypeError, IndexError):
@@ -1005,7 +1007,7 @@ class MixedRoadEnv(AbstractEnv):
             try:
                 # 충돌시 종료
                 if self.vehicle.crashed:
-                    print(f"❌ 회전교차로에서 충돌 발생")
+                    print(f" 회전교차로에서 충돌 발생")
                     return True
                 
                 # 회전교차로 중앙 충돌 (반지름 15m 이내 침입)
@@ -1014,7 +1016,7 @@ class MixedRoadEnv(AbstractEnv):
                     np.array(self.vehicle.position) - np.array(center)
                 )
                 if distance_to_center < 15:
-                    print(f"❌ 회전교차로 중앙 영역 침입으로 인한 실패")
+                    print(f" 회전교차로 중앙 영역 침입으로 인한 실패")
                     return True
                 
                 # 회전교차로 영역을 완전히 벗어났지만 출구가 아닌 곳으로 나간 경우
@@ -1022,10 +1024,9 @@ class MixedRoadEnv(AbstractEnv):
                     # 올바른 출구 차선에 있는지 확인
                     if segment_key not in [("sx", "sxs"), ("sxs", "sxr"), ("ex", "exs"), 
                                          ("exs", "exr"), ("nx", "nxs"), ("nxs", "nxr")]:
-                        print(f"❌ 회전교차로에서 잘못된 경로로 이탈")
+                        print(f" 회전교차로에서 잘못된 경로로 이탈")
                         return True
                 
-                # 심각한 역방향 주행 감지 (더 관대하게 조정)
                 if hasattr(self.vehicle, 'heading') and self.vehicle.heading is not None:
                     # 회전교차로에서 예상되는 방향 (반시계방향)
                     expected_heading = np.arctan2(
@@ -1037,9 +1038,9 @@ class MixedRoadEnv(AbstractEnv):
                     if heading_diff > np.pi:
                         heading_diff = 2*np.pi - heading_diff
                     
-                    # 135도 이상 방향이 틀렸을 때만 실패 (더 관대하게)
+                    # 135도 이상 방향이 틀렸을 때만 실패 
                     if heading_diff > 3*np.pi/4:
-                        print(f"❌ 회전교차로에서 심각한 역방향 주행")
+                        print(f" 회전교차로에서 심각한 역방향 주행")
                         return True
                         
             except (AttributeError, TypeError, ValueError, IndexError):
