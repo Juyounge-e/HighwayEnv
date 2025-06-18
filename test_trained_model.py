@@ -1,18 +1,53 @@
 #!/usr/bin/env python3
 """
 훈련된 PPO 모델 테스트 및 시각화
-===============================
-
-이 스크립트는 훈련된 PPO 모델을 로드하고 테스트합니다.
-시각적 확인과 성능 분석을 제공합니다.
 """
 
 import gymnasium as gym
 import highway_env
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
 from matplotlib.patches import Circle
 from matplotlib.animation import FuncAnimation, PillowWriter
+
+# 한글 폰트 설정
+def setup_korean_font():
+    """macOS에서 한글 폰트 설정"""
+    try:
+        # macOS에서 사용 가능한 한글 폰트 목록
+        korean_fonts = [
+            'Apple SD Gothic Neo',
+            'Noto Sans CJK KR',
+            'Malgun Gothic',
+            'NanumGothic',
+            'AppleGothic'
+        ]
+        
+        # 시스템에 설치된 폰트 목록 가져오기
+        available_fonts = [f.name for f in fm.fontManager.ttflist]
+        
+        # 사용 가능한 한글 폰트 찾기
+        for font in korean_fonts:
+            if font in available_fonts:
+                plt.rcParams['font.family'] = font
+                plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
+                print(f" 한글 폰트 설정 완료: {font}")
+                return True
+        
+        # 한글 폰트를 찾지 못한 경우 기본 설정
+        print("⚠️ 한글 폰트를 찾을 수 없어 기본 설정을 사용합니다.")
+        plt.rcParams['axes.unicode_minus'] = False
+        return False
+        
+    except Exception as e:
+        print(f"⚠️ 폰트 설정 중 오류 발생: {e}")
+        plt.rcParams['axes.unicode_minus'] = False
+        return False
+
+# 한글 폰트 설정 실행
+setup_korean_font()
+
 from stable_baselines3 import PPO
 import os
 import cv2
@@ -64,7 +99,7 @@ class ModelTester:
         print("✅ 테스트 환경 설정 완료")
     
     def run_single_episode(self, episode_num: int = 1, render: bool = True, 
-                          save_video: bool = False) -> Dict:
+                          save_video: bool = False, auto_save_success: bool = True) -> Dict:
         """단일 에피소드 실행"""
         print(f"\n🎮 에피소드 {episode_num} 실행 중...")
         
@@ -99,8 +134,8 @@ class ModelTester:
             obs, reward, terminated, truncated, info = self.env.step(action)
             done = terminated or truncated
             
-            # 프레임 캡처
-            if save_video or render:
+            # 프레임 캡처 (성공 가능성을 위해 항상 저장)
+            if save_video or auto_save_success or render:
                 frame = self.env.render()
                 if frame is not None:
                     episode_data['frames'].append(frame)
@@ -187,9 +222,20 @@ class ModelTester:
             plt.ioff()
             plt.close(fig)
         
-        # 비디오 저장
-        if save_video and episode_data['frames']:
-            self._save_video(episode_data['frames'], f"episode_{episode_num}_test.mp4")
+        # 비디오 저장 로직 개선
+        video_saved = False
+        if episode_data['frames']:
+            # 강제 저장 모드이거나 성공한 에피소드인 경우
+            if save_video or (auto_save_success and episode_data['success']):
+                import time
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                status = "SUCCESS" if episode_data['success'] else "FAILED"
+                filename = f"episode_{episode_num}_{status}_{timestamp}.mp4"
+                self._save_video(episode_data['frames'], filename)
+                video_saved = True
+                
+                if episode_data['success']:
+                    print(f"   🎥 성공 에피소드 비디오 자동 저장됨!")
         
         # 결과 출력
         status = "✅ 성공" if episode_data['success'] else "❌ 실패"
@@ -198,6 +244,8 @@ class ModelTester:
         
         print(f"   {status} - {step}스텝, 보상={episode_data['total_reward']:.2f}, {crash_status}")
         print(f"   방문 구간: {unique_segments}개")
+        if video_saved:
+            print(f"   📹 비디오 저장됨")
         
         return episode_data
     
@@ -223,21 +271,26 @@ class ModelTester:
         except Exception as e:
             print(f"   ❌ 비디오 저장 실패: {e}")
     
-    def run_multiple_episodes(self, n_episodes: int = 10, save_videos: bool = False) -> Dict:
+    def run_multiple_episodes(self, n_episodes: int = 10, save_videos: bool = False, 
+                             auto_save_success: bool = True) -> Dict:
         """여러 에피소드 실행 및 통계 분석"""
         print(f"\n📊 {n_episodes}개 에피소드 테스트 시작")
+        if auto_save_success:
+            print("🎥 성공한 에피소드는 자동으로 비디오 저장됩니다")
         
         all_results = []
         success_count = 0
         crash_count = 0
         total_rewards = []
         episode_lengths = []
+        saved_videos = 0
         
         for i in range(n_episodes):
             result = self.run_single_episode(
                 episode_num=i+1, 
                 render=False,  # 여러 에피소드 실행시 렌더링 비활성화
-                save_video=save_videos and i < 3  # 처음 3개만 비디오 저장
+                save_video=save_videos,  # 강제 저장 모드
+                auto_save_success=auto_save_success  # 성공시 자동 저장
             )
             
             all_results.append(result)
@@ -246,6 +299,8 @@ class ModelTester:
             
             if result['success']:
                 success_count += 1
+                if auto_save_success:
+                    saved_videos += 1
             if result['crash']:
                 crash_count += 1
         
@@ -260,6 +315,7 @@ class ModelTester:
             'std_length': np.std(episode_lengths),
             'max_reward': np.max(total_rewards),
             'min_reward': np.min(total_rewards),
+            'videos_saved': saved_videos,
             'all_results': all_results
         }
         
@@ -270,6 +326,8 @@ class ModelTester:
         print(f"   • 평균 보상: {stats['avg_reward']:.2f} ± {stats['std_reward']:.2f}")
         print(f"   • 평균 길이: {stats['avg_length']:.1f} ± {stats['std_length']:.1f}")
         print(f"   • 보상 범위: {stats['min_reward']:.2f} ~ {stats['max_reward']:.2f}")
+        if auto_save_success:
+            print(f"   • 저장된 성공 비디오: {saved_videos}개")
         
         return stats
     
@@ -471,7 +529,7 @@ def main():
         # 사용자 선택
         print("\n🎯 테스트 옵션:")
         print("1. 단일 에피소드 (시각화 포함)")
-        print("2. 다중 에피소드 성능 분석")
+        print("2. 다중 에피소드 성능 분석 (성공시 자동 비디오 저장)")
         print("3. 둘 다 실행")
         
         choice = input("선택하세요 (1/2/3): ").strip()
@@ -482,18 +540,33 @@ def main():
             episode_result = tester.run_single_episode(
                 episode_num=1, 
                 render=True, 
-                save_video=True
+                save_video=True,
+                auto_save_success=True
             )
         
         if choice in ['2', '3']:
             # 다중 에피소드 테스트
             print("\n" + "="*50)
             n_episodes = 20  # 테스트할 에피소드 수
-            stats = tester.run_multiple_episodes(n_episodes=n_episodes, save_videos=False)
+            print("📢 성공한 에피소드는 자동으로 비디오 파일로 저장됩니다!")
+            print("   파일명 형식: episode_N_SUCCESS_YYYYMMDD_HHMMSS.mp4")
+            
+            stats = tester.run_multiple_episodes(
+                n_episodes=n_episodes, 
+                save_videos=False,  # 강제 저장 비활성화
+                auto_save_success=True  # 성공시 자동 저장 활성화
+            )
             
             # 결과 시각화 및 저장
             tester.visualize_performance(stats)
             tester.save_results(stats)
+            
+            # 생성된 비디오 파일 목록 출력
+            if stats.get('videos_saved', 0) > 0:
+                print(f"\n🎬 생성된 성공 비디오 파일:")
+                video_files = [f for f in os.listdir('.') if f.startswith('episode_') and 'SUCCESS' in f and f.endswith('.mp4')]
+                for video_file in sorted(video_files)[-stats['videos_saved']:]:
+                    print(f"   📹 {video_file}")
         
         print("\n🎉 테스트 완료!")
         

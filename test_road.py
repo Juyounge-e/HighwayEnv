@@ -3,7 +3,7 @@ import highway_env
 from matplotlib import pyplot as plt
 
 # 환경 선택
-env = gym.make("custom-mixed-road-v0", render_mode="rgb_array")  # 또는 "custom-mixed-road-v0"
+env = gym.make("custom-mixed-road-v0", render_mode="rgb_array") 
 obs, info = env.reset()
 done = False
 truncated = False
