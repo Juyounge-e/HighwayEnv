@@ -23,8 +23,6 @@ cd mixed-road
 # 의존 패키지 설치
 pip install -r requirements.txt
 
-<br>
-
 
 🏁 실행 방법
 
@@ -37,15 +35,11 @@ python test_trained_model.py
 # 구성 환경 시각화 
 python env_visualize.py
 
-<br>
-
 
 🛣️ 사용자 정의 환경
-	•	custom_mixed_env.py에서 고속도로, 합류로, 회전교차로를 수작업으로 생성
-	•	각 도로는 코드로 정의되어 이어 붙였으며, 각 도로에는 세그먼트별 고유 라벨을 부여
-	•	이 라벨을 기반으로 보상 및 종료 조건을 구간별로 달리 설정
-
-<br>
+•	custom_mixed_env.py에서 고속도로, 합류로, 회전교차로를 수작업으로 생성
+•	각 도로는 코드로 정의되어 이어 붙였으며, 각 도로에는 세그먼트별 고유 라벨을 부여
+•	이 라벨을 기반으로 보상 및 종료 조건을 구간별로 달리 설정
 
 
 📊 결과 요약
@@ -58,13 +52,8 @@ python env_visualize.py
 평균 에피소드 길이	232.5 steps
 
 
-<br>
-
-
 
 📁 디렉토리 구조
-
-.
 ├── ./highway_env/envs/custom_mixed_env.py  # 사용자 정의 환경
 ├── train_ppo.py                            # PPO 훈련 스크립트
 ├── test_trained_model.py                   # 모델 평가 스크립트
@@ -73,15 +62,14 @@ python env_visualize.py
 ├── logs/                                   # 훈련 로그
 └── README.md                               # 프로젝트 설명
 
-<br>
 
 
 📚 참고 자료
-	•	Highway-env GitHub
-	•	Stable-Baselines3 (PPO)
+•	Highway-env GitHub
+•	Stable-Baselines3 (PPO)
 
 ⸻
 
 ✍️ 작성자
-유주영
+**유주영**
 산업경영공학전공 
