@@ -1,22 +1,51 @@
 #!/usr/bin/env python3
 """
-PPO를 사용한 Mixed Road 환경 훈련 (M1 Mac 최적화)
-==============================================
-
-이 스크립트는 Stable-Baselines3의 PPO 알고리즘을 사용하여
-custom-mixed-road 환경에서 에이전트를 훈련합니다.
-
-M1 Mac 최적화 특징:
-- 단일 환경 훈련 (병렬 처리 제거)
-- MPS(Metal Performance Shaders) GPU 지원
-- 간소화된 설정으로 빠른 시작
-- 실시간 훈련 모니터링
+PPO를 사용한 Mixed Road 환경 훈련 
 """
 
 import gymnasium as gym
 import highway_env
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+
+# 한글 폰트 설정
+def setup_korean_font():
+    """macOS에서 한글 폰트 설정"""
+    try:
+        # macOS에서 사용 가능한 한글 폰트 목록
+        korean_fonts = [
+            'Apple SD Gothic Neo',
+            'Noto Sans CJK KR',
+            'Malgun Gothic',
+            'NanumGothic',
+            'AppleGothic'
+        ]
+        
+        # 시스템에 설치된 폰트 목록 가져오기
+        available_fonts = [f.name for f in fm.fontManager.ttflist]
+        
+        # 사용 가능한 한글 폰트 찾기
+        for font in korean_fonts:
+            if font in available_fonts:
+                plt.rcParams['font.family'] = font
+                plt.rcParams['axes.unicode_minus'] = False  # 마이너스 기호 깨짐 방지
+                print(f"✅ 한글 폰트 설정 완료: {font}")
+                return True
+        
+        # 한글 폰트를 찾지 못한 경우 기본 설정
+        print(" 한글 폰트를 찾을 수 없어 기본 설정을 사용합니다.")
+        plt.rcParams['axes.unicode_minus'] = False
+        return False
+        
+    except Exception as e:
+        print(f" 폰트 설정 중 오류 발생: {e}")
+        plt.rcParams['axes.unicode_minus'] = False
+        return False
+
+# 한글 폰트 설정 실행
+setup_korean_font()
+
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.callbacks import EvalCallback, BaseCallback
@@ -81,13 +110,13 @@ class TrainingConfig:
     def _get_device(self):
         """M1 Mac에 최적화된 디바이스 선택"""
         if torch.backends.mps.is_available():
-            print("🚀 MPS (Metal Performance Shaders) 사용 가능!")
+            print(" MPS (Metal Performance Shaders) 사용 가능!")
             return "mps"
         elif torch.cuda.is_available():
-            print("🎮 CUDA GPU 사용 가능!")
+            print(" CUDA GPU 사용 가능!")
             return "cuda"
         else:
-            print("💻 CPU 모드로 실행")
+            print(" CPU 모드로 실행")
             return "cpu"
 
 class SimpleProgressCallback(BaseCallback):
@@ -100,14 +129,14 @@ class SimpleProgressCallback(BaseCallback):
         
     def _on_training_start(self) -> None:
         self.start_time = time.time()
-        print("🎯 훈련 시작!")
+        print("훈련 시작!")
         
     def _on_step(self) -> bool:
         if self.n_calls % self.check_freq == 0:
             elapsed_time = time.time() - self.start_time
             progress = self.n_calls / self.locals.get('total_timesteps', 1)
             
-            print(f"📊 진행률: {progress:.1%} ({self.n_calls:,} 스텝)")
+            print(f" 진행률: {progress:.1%} ({self.n_calls:,} 스텝)")
             print(f"   시간: {elapsed_time/60:.1f}분")
             
             # 최근 에피소드 정보
@@ -128,7 +157,7 @@ def create_single_env(config: TrainingConfig):
 
 def evaluate_model_simple(model, env, n_episodes: int = 5):
     """간단한 모델 평가"""
-    print(f"\n🧪 모델 평가 중... ({n_episodes}개 에피소드)")
+    print(f"\n 모델 평가 중... ({n_episodes}개 에피소드)")
     
     episode_rewards = []
     success_count = 0
@@ -155,7 +184,7 @@ def evaluate_model_simple(model, env, n_episodes: int = 5):
     avg_reward = np.mean(episode_rewards)
     success_rate = success_count / n_episodes
     
-    print(f"📊 평가 결과: 평균 보상={avg_reward:.2f}, 성공률={success_rate:.1%}")
+    print(f" 평가 결과: 평균 보상={avg_reward:.2f}, 성공률={success_rate:.1%}")
     
     return avg_reward, success_rate
 
@@ -167,7 +196,7 @@ def plot_simple_progress(log_dir: str, save_path: str):
         # 로그 파일 찾기
         log_files = [f for f in os.listdir(log_dir) if f.endswith('.monitor.csv')]
         if not log_files:
-            print("❌ 로그 파일을 찾을 수 없습니다.")
+            print(" 로그 파일을 찾을 수 없습니다.")
             return
         
         # 데이터 읽기
@@ -200,21 +229,21 @@ def plot_simple_progress(log_dir: str, save_path: str):
         
         plt.tight_layout()
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
-        print(f"📊 훈련 진행 상황 저장: {save_path}")
+        print(f"훈련 진행 상황 저장: {save_path}")
         plt.close()
         
     except Exception as e:
-        print(f"❌ 시각화 실패: {e}")
+        print(f" 시각화 실패: {e}")
 
 def main():
     """M1 Mac용 간소화된 메인 훈련 함수"""
-    print("🚗 Mixed Road PPO 훈련 (M1 Mac 최적화)")
+    print(" Mixed Road PPO 훈련 (M1 Mac 최적화)")
     print("=" * 50)
     
     # 설정 로드
     config = TrainingConfig()
     
-    print(f"🔧 훈련 설정:")
+    print(f" 훈련 설정:")
     print(f"   • 총 훈련 스텝: {config.total_timesteps:,}")
     print(f"   • 디바이스: {config.device}")
     print(f"   • 차량 수: {config.env_config['vehicles_count']}")
@@ -222,13 +251,13 @@ def main():
     
     try:
         # 환경 생성
-        print("\n🔧 환경 설정 중...")
+        print("\n 환경 설정 중...")
         train_env = create_single_env(config)
         eval_env = create_single_env(config)
-        print("✅ 환경 생성 완료")
+        print(" 환경 생성 완료")
         
         # PPO 모델 생성
-        print("\n🧠 PPO 모델 생성 중...")
+        print("\n PPO 모델 생성 중...")
         
         model = PPO(
             "MlpPolicy",
@@ -248,7 +277,7 @@ def main():
             verbose=1
         )
         
-        print(f"✅ PPO 모델 생성 완료")
+        print(f" PPO 모델 생성 완료")
         
         # 콜백 설정
         progress_callback = SimpleProgressCallback(check_freq=1000)
@@ -265,7 +294,7 @@ def main():
         )
         
         # 훈련 시작
-        print(f"\n🎯 훈련 시작!")
+        print(f"\n 훈련 시작!")
         print("   TensorBoard 로그를 보려면: tensorboard --logdir=./tensorboard/")
         print("   Ctrl+C로 언제든 중단할 수 있습니다.")
         
@@ -274,19 +303,19 @@ def main():
         model.learn(
             total_timesteps=config.total_timesteps,
             callback=[progress_callback, eval_callback],
-            tb_log_name="PPO_MixedRoad_M1"
+            tb_log_name="PPO_MixedRoad"
         )
         
         training_time = time.time() - start_time
-        print(f"\n🏁 훈련 완료! (소요 시간: {training_time/60:.1f}분)")
+        print(f"\n 훈련 완료! (소요 시간: {training_time/60:.1f}분)")
         
         # 최종 모델 저장
-        final_model_path = os.path.join(config.model_dir, "ppo_mixed_road_m1.zip")
+        final_model_path = os.path.join(config.model_dir, "ppo_mixed_road.zip")
         model.save(final_model_path)
-        print(f"💾 최종 모델 저장: {final_model_path}")
+        print(f" 최종 모델 저장: {final_model_path}")
         
         # 최종 평가
-        print("\n🏆 최종 모델 평가")
+        print("\n 최종 모델 평가")
         final_avg_reward, final_success_rate = evaluate_model_simple(
             model, eval_env, n_episodes=10
         )
@@ -294,13 +323,13 @@ def main():
         # 베스트 모델 평가 (있는 경우)
         best_model_path = os.path.join(config.model_dir, "best_model.zip")
         if os.path.exists(best_model_path):
-            print("\n🥇 베스트 모델 평가")
+            print("\n 베스트 모델 평가")
             best_model = PPO.load(best_model_path)
             best_avg_reward, best_success_rate = evaluate_model_simple(
                 best_model, eval_env, n_episodes=10
             )
             
-            print(f"\n📈 결과 비교:")
+            print(f"\n 결과 비교:")
             print(f"   최종 모델: 보상={final_avg_reward:.2f}, 성공률={final_success_rate:.1%}")
             print(f"   베스트 모델: 보상={best_avg_reward:.2f}, 성공률={best_success_rate:.1%}")
         
@@ -308,13 +337,13 @@ def main():
         plot_path = os.path.join(config.model_dir, "training_progress.png")
         plot_simple_progress(config.log_dir, plot_path)
         
-        print(f"\n🎉 훈련 완료!")
+        print(f"\n 훈련 완료!")
         print(f"   • 모델 저장 위치: {config.model_dir}")
         print(f"   • 로그 위치: {config.log_dir}")
         print(f"   • 다음 명령어로 테스트: python test_trained_model.py")
         
     except KeyboardInterrupt:
-        print("\n⚠️  사용자에 의해 훈련이 중단되었습니다.")
+        print("\n  사용자에 의해 훈련이 중단되었습니다.")
         print("   부분적으로 훈련된 모델이 저장되었을 수 있습니다.")
         
     except Exception as e:
